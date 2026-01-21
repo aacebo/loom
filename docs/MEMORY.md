@@ -7,9 +7,9 @@
 
 A memory is a stored representation of information from experience that the brain (or a system) can retrieve later to influence prediction, decisions, or behavior.
 
-The brain stores information when **salience + meaning + context + consequence exceed a threshold**, and it stores different projections of the same event into different memory systems/types.
-
 > 🧠 A **durable, retrievable trace** that binds content (what) to enough **state/context** (when/where/who/why/how it mattered) that the system can reuse it later.
+
+The brain stores information when **salience + meaning + context + consequence exceed a threshold**, and it stores different projections of the same event into different memory systems/types.
 
 ## Components
 
@@ -28,6 +28,8 @@ The brain stores information when **salience + meaning + context + consequence e
 * [Working](#working-temporary)
 
 ### Episodic (Events)
+
+*"the ability to consciously remember personally experienced events as being located in a particular time and place."* [^Tulving]
 
 > 💭 *“That thing that happened to me.”*
 
@@ -50,6 +52,8 @@ The brain stores information when **salience + meaning + context + consequence e
 
 ### Semantic (Facts, Concepts)
 
+*"a type of declarative (explicit) long-term memory that stores general knowledge—facts, concepts, meanings, and relationships—that is not tied to a specific time or place of learning."* [^Tulving] 
+
 > 💭 *"Things I know."*
 
 > 💾 Stored when information can be generalized and reused.
@@ -70,6 +74,8 @@ The brain stores information when **salience + meaning + context + consequence e
 
 ### Procedural (Skills, Habits)
 
+*"a form of nondeclarative (implicit) long-term memory for skills and habits—it is expressed through performance (“doing”) rather than through conscious recollection (“remembering”)."* [^Squire]
+
 > 💭 *"Things I can do."*
 
 > 💾 Stored through practice, not description.
@@ -88,6 +94,8 @@ The brain stores information when **salience + meaning + context + consequence e
 3. Very slow to learn, very hard to forget
 
 ### Emotional
+
+*"memories whose encoding and long-term retention are strengthened by emotional arousal, due to amygdala-mediated modulation of memory consolidation in declarative and nondeclarative memory systems."* [^McGaugh]
 
 > 💭 *"Things that feel dangerous or rewarding"*
 
@@ -108,6 +116,8 @@ The brain stores information when **salience + meaning + context + consequence e
 4. Can override logic
 
 ### Working (Temporary)
+
+*“the small amount of information that can be held in mind and used in the execution of cognitive tasks.”* [^Baddeley]
 
 > 💭 *"What I'm holding right now"*
 
@@ -246,3 +256,12 @@ A *modulator* increases or decreases the **priority/durability** of a memory typ
 | Prediction error                      | Forces encoding                       |
 | Recall attempts                       | Strengthens trace                     |
 | Narrative coherence                   | Improves **episodic retention**       |
+
+
+[^Squire]: **Larry R. Squire** *(Distinguished Professor of Psychiatry, Neurosciences, and Psychology, University of California San Diego)* [Memory and Brain Systems (1969-2009)](https://www.jneurosci.org/content/29/41/12711/)
+
+[^Baddeley]: **A Baddeley** *(Medical Research Council, Applied Psychology Unit, Cambridge, United Kingdom.)* [Working Memory](https://pubmed.ncbi.nlm.nih.gov/1736359/)
+
+[^McGaugh]: **James L. McGaugh** *(Center for the Neurobiology of Learning and Memory, Department of Neurobiology and Behavior, University of California, Irvine 92697-3800, USA.jlmcgaug@uci.edu)* [The Amygdala Modulates the Consilidation of Memories](https://pubmed.ncbi.nlm.nih.gov/15217324/)
+
+[^Tulving]: **Endel Tulving** *(Professor of Psychology at Washington University in St. Louis)* [Episodic and Semantic Memory](https://alicekim.ca/EMSM72.pdf)
