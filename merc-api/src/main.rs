@@ -2,9 +2,11 @@ use actix_web::{App, HttpServer, web};
 use sqlx::postgres::PgPoolOptions;
 
 mod context;
+mod request_context;
 mod routes;
 
 pub use context::Context;
+pub use request_context::{RequestContext, RequestContextMiddleware};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -34,6 +36,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(ctx.clone()))
+            .wrap(RequestContextMiddleware)
             .service(routes::index)
             .service(routes::ingest)
     })

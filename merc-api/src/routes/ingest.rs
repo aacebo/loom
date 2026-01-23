@@ -1,7 +1,7 @@
 use actix_web::{HttpResponse, post, web};
 use serde::Deserialize;
 
-use crate::Context;
+use crate::RequestContext;
 
 #[derive(Deserialize)]
 struct IngestPath {
@@ -15,11 +15,11 @@ struct IngestChatPayload {
 
 #[post("/chats/{scope_id}/ingest")]
 pub async fn ingest(
-    ctx: web::Data<Context>,
+    ctx: RequestContext,
     path: web::Path<IngestPath>,
     payload: web::Json<IngestChatPayload>,
 ) -> HttpResponse {
-    let _ctx = ctx.into_inner();
+    let _ctx = ctx.context();
     let _scope_id = path.into_inner().scope_id;
     let _text = payload.into_inner().text;
 

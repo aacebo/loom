@@ -1,7 +1,7 @@
-use actix_web::{HttpResponse, get, web};
+use actix_web::{HttpResponse, get};
 use serde::Serialize;
 
-use crate::Context;
+use crate::RequestContext;
 
 #[derive(Serialize)]
 struct IndexResponse {
@@ -9,7 +9,7 @@ struct IndexResponse {
 }
 
 #[get("/")]
-pub async fn index(ctx: web::Data<Context>) -> HttpResponse {
+pub async fn index(ctx: RequestContext) -> HttpResponse {
     HttpResponse::Ok().json(IndexResponse {
         start_time: ctx.start_time().to_rfc3339(),
     })
