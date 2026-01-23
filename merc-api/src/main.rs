@@ -2,6 +2,7 @@ use actix_web::{App, HttpServer, web};
 use sqlx::postgres::PgPoolOptions;
 
 mod context;
+mod routes;
 
 pub use context::Context;
 
@@ -25,8 +26,12 @@ async fn main() -> std::io::Result<()> {
 
     println!("Starting server at http://127.0.0.1:3000");
 
-    HttpServer::new(move || App::new().app_data(web::Data::new(ctx.clone())))
-        .bind(("127.0.0.1", 3000))?
-        .run()
-        .await
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(ctx.clone()))
+            .service(routes::ingest)
+    })
+    .bind(("127.0.0.1", 3000))?
+    .run()
+    .await
 }
