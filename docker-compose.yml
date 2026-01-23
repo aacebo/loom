@@ -1,6 +1,17 @@
 name: merc
 
 services:
+  api:
+    build:
+      context: .
+      dockerfile: merc-api/Dockerfile
+    ports:
+      - 8080:8080
+    environment:
+      DATABASE_URL: postgres://admin:admin@postgres:5432/main
+    depends_on:
+      - postgres
+
   postgres:
     image: pgvector/pgvector:pg17
     ports:

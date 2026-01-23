@@ -8,6 +8,11 @@ pub use context::Context;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let port: u16 = std::env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .expect("PORT must be a valid number");
+
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://admin:admin@localhost:5432/main".to_string());
 
@@ -24,14 +29,15 @@ async fn main() -> std::io::Result<()> {
 
     let ctx = Context::new(pool);
 
-    println!("Starting server at http://127.0.0.1:3000");
+    println!("Starting server at http://0.0.0.0:{}", port);
 
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(ctx.clone()))
+            .service(routes::index)
             .service(routes::ingest)
     })
-    .bind(("127.0.0.1", 3000))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }

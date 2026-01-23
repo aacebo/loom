@@ -1117,15 +1117,11 @@ name = "merc-api"
 version = "0.0.1"
 dependencies = [
  "actix-web",
- "merc-error",
+ "chrono",
  "merc-storage",
  "serde",
  "sqlx",
 ]
-
-[[package]]
-name = "merc-error"
-version = "0.0.1"
 
 [[package]]
 name = "merc-storage"
