@@ -7,11 +7,11 @@ async fn main() -> Result<(), merc_error::Error> {
 
     println!("connecting to rabbitmq at {}", rabbitmq_url);
 
-    let mut consumer = merc_events::connect(&rabbitmq_url)
-        .await?
+    let mut consumer = merc_events::new(&rabbitmq_url)
+        .with_app_id("merc[worker]")
         .with_queue(Key::memory(MemoryAction::Create))
+        .connect()
         .await?
-        .build()
         .consume(Key::memory(MemoryAction::Create))
         .await?;
 

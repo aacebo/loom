@@ -10,6 +10,6 @@ pub use event::*;
 pub use key::*;
 pub use producer::*;
 
-pub async fn connect(uri: &str) -> merc_error::Result<ChannelConnector> {
-    ChannelConnector::connect(uri).await
+pub fn new(uri: &str) -> ChannelConnector {
+    ChannelConnector::new(uri)
 }

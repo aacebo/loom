@@ -1,4 +1,5 @@
 use actix_web::{App, HttpServer, web};
+use merc_events::{Key, MemoryAction};
 use sqlx::postgres::PgPoolOptions;
 
 mod context;
@@ -29,7 +30,19 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let ctx = Context::new(pool);
+    let rabbitmq_url = std::env::var("RABBITMQ_URL")
+        .unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());
+
+    let producer = merc_events::new(&rabbitmq_url)
+        .with_app_id("merc[api]")
+        .with_queue(Key::memory(MemoryAction::Create))
+        .with_queue(Key::memory(MemoryAction::Update))
+        .connect()
+        .await
+        .expect("error while connecting to rabbitmq")
+        .produce();
+
+    let ctx = Context::new(pool, producer);
 
     println!("Starting server at http://0.0.0.0:{}", port);
 

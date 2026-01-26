@@ -14,4 +14,6 @@ chrono = { workspace = true }
 serde = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
+merc-error = { workspace = true }
+merc-events = { workspace = true }
 merc-storage = { workspace = true }

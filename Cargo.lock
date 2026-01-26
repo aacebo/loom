@@ -1633,6 +1633,8 @@ version = "0.0.1"
 dependencies = [
  "actix-web",
  "chrono",
+ "merc-error",
+ "merc-events",
  "merc-storage",
  "serde",
  "sqlx",

@@ -6,21 +6,15 @@ use merc_error::{Error, Result};
 use crate::{Consumer, Key, Producer};
 
 pub struct ChannelConnection {
+    app_id: String,
     conn: Connection,
     channel: Channel,
     queues: HashMap<Key, lapin::Queue>,
 }
 
 impl ChannelConnection {
-    pub async fn connect(uri: &str) -> Result<Self> {
-        let conn = Connection::connect(uri, ConnectionProperties::default()).await?;
-        let channel = conn.create_channel().await?;
-
-        Ok(Self {
-            conn,
-            channel,
-            queues: HashMap::new(),
-        })
+    pub fn app_id(&self) -> &str {
+        &self.app_id
     }
 
     pub fn conn(&self) -> &Connection {
@@ -49,61 +43,71 @@ impl ChannelConnection {
 }
 
 pub struct ChannelConnector {
-    conn: Connection,
-    channel: Channel,
-    queues: HashMap<Key, lapin::Queue>,
+    app_id: String,
+    uri: String,
+    queues: Vec<Key>,
 }
 
 impl ChannelConnector {
-    pub async fn connect(uri: &str) -> Result<Self> {
-        let conn = Connection::connect(uri, ConnectionProperties::default()).await?;
-        let channel = conn.create_channel().await?;
+    pub fn new(uri: &str) -> Self {
+        Self {
+            app_id: String::new(),
+            uri: uri.to_string(),
+            queues: vec![],
+        }
+    }
 
-        Ok(Self {
+    pub fn with_app_id(mut self, app_id: &str) -> Self {
+        self.app_id = app_id.to_string();
+        self
+    }
+
+    pub fn with_queue(mut self, key: Key) -> Self {
+        self.queues.push(key);
+        self
+    }
+
+    pub async fn connect(self) -> Result<ChannelConnection> {
+        let conn = Connection::connect(&self.uri, ConnectionProperties::default()).await?;
+        let channel = conn.create_channel().await?;
+        let mut queues = HashMap::new();
+
+        for key in self.queues {
+            channel
+                .exchange_declare(
+                    key.exchange(),
+                    lapin::ExchangeKind::Topic,
+                    options::ExchangeDeclareOptions::default(),
+                    types::FieldTable::default(),
+                )
+                .await?;
+
+            let queue = channel
+                .queue_declare(
+                    key.queue(),
+                    options::QueueDeclareOptions::default(),
+                    types::FieldTable::default(),
+                )
+                .await?;
+
+            channel
+                .queue_bind(
+                    key.queue(),
+                    key.exchange(),
+                    &key.to_string(),
+                    options::QueueBindOptions::default(),
+                    types::FieldTable::default(),
+                )
+                .await?;
+
+            queues.insert(key, queue);
+        }
+
+        Ok(ChannelConnection {
+            app_id: self.app_id,
             conn,
             channel,
-            queues: HashMap::new(),
+            queues,
         })
-    }
-
-    pub async fn with_queue(mut self, key: Key) -> Result<Self> {
-        self.channel
-            .exchange_declare(
-                key.exchange(),
-                lapin::ExchangeKind::Topic,
-                options::ExchangeDeclareOptions::default(),
-                types::FieldTable::default(),
-            )
-            .await?;
-
-        let queue = self
-            .channel
-            .queue_declare(
-                key.queue(),
-                options::QueueDeclareOptions::default(),
-                types::FieldTable::default(),
-            )
-            .await?;
-
-        self.channel
-            .queue_bind(
-                key.queue(),
-                key.exchange(),
-                &key.to_string(),
-                options::QueueBindOptions::default(),
-                types::FieldTable::default(),
-            )
-            .await?;
-
-        self.queues.insert(key, queue);
-        Ok(self)
-    }
-
-    pub fn build(self) -> ChannelConnection {
-        ChannelConnection {
-            conn: self.conn,
-            channel: self.channel,
-            queues: self.queues,
-        }
     }
 }

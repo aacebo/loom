@@ -1,15 +1,20 @@
+use std::sync::Arc;
+
 use lapin::{options, protocol};
 use merc_error::Result;
 
 use crate::{ChannelConnection, Event};
 
+#[derive(Clone)]
 pub struct Producer {
-    conn: ChannelConnection,
+    conn: Arc<ChannelConnection>,
 }
 
 impl Producer {
     pub fn connect(conn: ChannelConnection) -> Self {
-        Self { conn }
+        Self {
+            conn: Arc::new(conn),
+        }
     }
 
     pub fn conn(&self) -> &ChannelConnection {
@@ -26,7 +31,9 @@ impl Producer {
                 &event.key.to_string(),
                 options::BasicPublishOptions::default(),
                 &payload,
-                protocol::basic::AMQPProperties::default(),
+                protocol::basic::AMQPProperties::default()
+                    .with_app_id(self.conn().app_id().into())
+                    .with_content_type("application/json".into()),
             )
             .await?;
 
