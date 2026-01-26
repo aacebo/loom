@@ -23,7 +23,5 @@ pub async fn ingest(
     let _scope_id = path.into_inner().scope_id;
     let _text = payload.into_inner().text;
 
-    // TODO: implement ingest logic
-
     HttpResponse::Ok().finish()
 }

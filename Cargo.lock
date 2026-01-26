@@ -1674,6 +1674,7 @@ version = "0.0.1"
 dependencies = [
  "merc-error",
  "merc-events",
+ "serde",
  "tokio",
 ]
 

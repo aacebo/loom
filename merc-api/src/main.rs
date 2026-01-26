@@ -2,26 +2,21 @@ use actix_web::{App, HttpServer, web};
 use merc_events::{Key, MemoryAction};
 use sqlx::postgres::PgPoolOptions;
 
+mod config;
 mod context;
 mod request_context;
 mod routes;
 
+pub use config::Config;
 pub use context::Context;
 pub use request_context::{RequestContext, RequestContextMiddleware};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port: u16 = std::env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse()
-        .expect("PORT must be a valid number");
-
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://admin:admin@localhost:5432/main".to_string());
-
+    let config = Config::from_env();
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&database_url)
+        .connect(&config.database_url)
         .await
         .expect("Failed to create pool");
 
@@ -30,10 +25,7 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let rabbitmq_url = std::env::var("RABBITMQ_URL")
-        .unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());
-
-    let producer = merc_events::new(&rabbitmq_url)
+    let producer = merc_events::new(&config.rabbitmq_url)
         .with_app_id("merc[api]")
         .with_queue(Key::memory(MemoryAction::Create))
         .with_queue(Key::memory(MemoryAction::Update))
@@ -43,8 +35,7 @@ async fn main() -> std::io::Result<()> {
         .produce();
 
     let ctx = Context::new(pool, producer);
-
-    println!("Starting server at http://0.0.0.0:{}", port);
+    println!("Starting server at http://0.0.0.0:{}", config.port);
 
     HttpServer::new(move || {
         App::new()
@@ -53,7 +44,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::index)
             .service(routes::ingest)
     })
-    .bind(("0.0.0.0", port))?
+    .bind(("0.0.0.0", config.port))?
     .run()
     .await
 }

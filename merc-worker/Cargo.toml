@@ -10,5 +10,6 @@ repository.workspace = true
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+serde = { workspace = true }
 merc-events = { workspace = true }
 merc-error = { workspace = true }

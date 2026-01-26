@@ -1,13 +1,13 @@
+mod config;
+
 use merc_events::{Key, MemoryAction};
+
+use config::Config;
 
 #[tokio::main]
 async fn main() -> Result<(), merc_error::Error> {
-    let rabbitmq_url = std::env::var("RABBITMQ_URL")
-        .unwrap_or_else(|_| "amqp://admin:admin@localhost:5672".to_string());
-
-    println!("connecting to rabbitmq at {}", rabbitmq_url);
-
-    let mut consumer = merc_events::new(&rabbitmq_url)
+    let config = Config::from_env();
+    let mut consumer = merc_events::new(&config.rabbitmq_url)
         .with_app_id("merc[worker]")
         .with_queue(Key::memory(MemoryAction::Create))
         .connect()
