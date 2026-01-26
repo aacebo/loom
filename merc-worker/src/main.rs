@@ -7,13 +7,13 @@ use config::Config;
 #[tokio::main]
 async fn main() -> Result<(), merc_error::Error> {
     let config = Config::from_env();
-    let mut consumer = merc_events::new(&config.rabbitmq_url)
+    let socket = merc_events::new(&config.rabbitmq_url)
         .with_app_id("merc[worker]")
         .with_queue(Key::memory(MemoryAction::Create))
         .connect()
-        .await?
-        .consume(Key::memory(MemoryAction::Create))
         .await?;
+
+    let mut consumer = socket.consume(Key::memory(MemoryAction::Create)).await?;
 
     println!("waiting for messages on memory.create...");
 

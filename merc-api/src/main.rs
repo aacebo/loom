@@ -25,16 +25,15 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to run migrations");
 
-    let producer = merc_events::new(&config.rabbitmq_url)
+    let amqp = merc_events::new(&config.rabbitmq_url)
         .with_app_id("merc[api]")
         .with_queue(Key::memory(MemoryAction::Create))
         .with_queue(Key::memory(MemoryAction::Update))
         .connect()
         .await
-        .expect("error while connecting to rabbitmq")
-        .produce();
+        .expect("error while connecting to rabbitmq");
 
-    let ctx = Context::new(pool, producer);
+    let ctx = Context::new(pool, amqp);
     println!("Starting server at http://0.0.0.0:{}", config.port);
 
     HttpServer::new(move || {

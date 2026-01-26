@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use merc_events::Producer;
+use merc_events::Socket;
 use sqlx::PgPool;
 
 use merc_storage::Storage;
@@ -7,12 +7,12 @@ use merc_storage::Storage;
 #[derive(Clone)]
 pub struct Context {
     pool: PgPool,
-    amqp: Producer,
+    amqp: Socket,
     start_time: DateTime<Utc>,
 }
 
 impl Context {
-    pub fn new(pool: PgPool, amqp: Producer) -> Self {
+    pub fn new(pool: PgPool, amqp: Socket) -> Self {
         Self {
             pool,
             amqp,
@@ -32,7 +32,7 @@ impl Context {
         &self.pool
     }
 
-    pub fn amqp(&self) -> &Producer {
+    pub fn amqp(&self) -> &Socket {
         &self.amqp
     }
 }

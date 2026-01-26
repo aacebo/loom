@@ -1,18 +1,19 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use lapin::{Channel, Connection, ConnectionProperties, options, types};
 use merc_error::{Error, Result};
 
-use crate::{Consumer, Key, Producer};
+use crate::{Key, SocketConsumer, SocketProducer};
 
-pub struct ChannelConnection {
+#[derive(Clone)]
+pub struct Socket {
     app_id: String,
-    conn: Connection,
-    channel: Channel,
+    conn: Arc<Connection>,
+    channel: Arc<Channel>,
     queues: HashMap<Key, lapin::Queue>,
 }
 
-impl ChannelConnection {
+impl Socket {
     pub fn app_id(&self) -> &str {
         &self.app_id
     }
@@ -29,26 +30,39 @@ impl ChannelConnection {
         self.queues.get(&key)
     }
 
-    pub async fn consume(self, key: Key) -> Result<Consumer> {
+    pub async fn consume(&self, key: Key) -> Result<SocketConsumer<'_>> {
         if !self.queues.contains_key(&key) {
             return Err(Error::builder().message("queue not found").build());
         }
 
-        Consumer::connect(self, key.queue()).await
+        let consumer = self
+            .channel()
+            .basic_consume(
+                key.queue(),
+                self.app_id(),
+                options::BasicConsumeOptions::default(),
+                types::FieldTable::default(),
+            )
+            .await?;
+
+        Ok(SocketConsumer {
+            socket: self,
+            consumer,
+        })
     }
 
-    pub fn produce(self) -> Producer {
-        Producer::connect(self)
+    pub fn produce(&self) -> SocketProducer<'_> {
+        SocketProducer { socket: self }
     }
 }
 
-pub struct ChannelConnector {
+pub struct SocketOptions {
     app_id: String,
     uri: String,
     queues: Vec<Key>,
 }
 
-impl ChannelConnector {
+impl SocketOptions {
     pub fn new(uri: &str) -> Self {
         Self {
             app_id: String::new(),
@@ -67,7 +81,7 @@ impl ChannelConnector {
         self
     }
 
-    pub async fn connect(self) -> Result<ChannelConnection> {
+    pub async fn connect(self) -> Result<Socket> {
         let conn = Connection::connect(&self.uri, ConnectionProperties::default()).await?;
         let channel = conn.create_channel().await?;
         let mut queues = HashMap::new();
@@ -103,10 +117,10 @@ impl ChannelConnector {
             queues.insert(key, queue);
         }
 
-        Ok(ChannelConnection {
+        Ok(Socket {
             app_id: self.app_id,
-            conn,
-            channel,
+            conn: Arc::new(conn),
+            channel: Arc::new(channel),
             queues,
         })
     }

@@ -1,40 +1,20 @@
-use std::sync::Arc;
-
 use futures_lite::StreamExt;
-use lapin::{options::BasicConsumeOptions, types::FieldTable};
 use merc_error::Result;
 
-use crate::{ChannelConnection, Event};
+use crate::{Event, Socket};
 
 #[derive(Clone)]
-pub struct Consumer {
-    conn: Arc<ChannelConnection>,
-    consumer: lapin::Consumer,
+pub struct SocketConsumer<'a> {
+    pub(crate) socket: &'a Socket,
+    pub(crate) consumer: lapin::Consumer,
 }
 
-impl Consumer {
-    pub async fn connect(conn: ChannelConnection, queue: &str) -> Result<Self> {
-        let consumer = conn
-            .channel()
-            .basic_consume(
-                queue,
-                conn.app_id(),
-                BasicConsumeOptions::default(),
-                FieldTable::default(),
-            )
-            .await?;
-
-        Ok(Self {
-            conn: Arc::new(conn),
-            consumer,
-        })
+impl<'a> SocketConsumer<'a> {
+    pub fn socket(&self) -> &'a Socket {
+        &self.socket
     }
 
-    pub fn conn(&self) -> &ChannelConnection {
-        &self.conn
-    }
-
-    pub async fn dequeue<T: for<'a> serde::Deserialize<'a>>(
+    pub async fn dequeue<T: for<'b> serde::Deserialize<'b>>(
         &mut self,
     ) -> Option<Result<(lapin::message::Delivery, Event<T>)>> {
         let delivery = match self.consumer.next().await? {
