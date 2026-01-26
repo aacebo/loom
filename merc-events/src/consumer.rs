@@ -28,18 +28,17 @@ impl Consumer {
         &self.conn
     }
 
-    pub async fn dequeue<T: for<'a> serde::Deserialize<'a>>(&mut self) -> Option<Result<Event<T>>> {
+    pub async fn dequeue<T: for<'a> serde::Deserialize<'a>>(&mut self) -> Option<Result<(lapin::message::Delivery, Event<T>)>> {
         let delivery = match self.consumer.next().await? {
             Err(err) => return Some(Err(err.into())),
             Ok(v) => v,
         };
 
-        let string = String::from_utf8_lossy(&delivery.data);
-        let data: Event<T> = match serde_json::from_slice(string.as_bytes()) {
+        let data: Event<T> = match serde_json::from_slice(&delivery.data) {
             Err(err) => return Some(Err(err.into())),
             Ok(v) => v,
         };
 
-        Some(Ok(data))
+        Some(Ok((delivery, data)))
     }
 }
