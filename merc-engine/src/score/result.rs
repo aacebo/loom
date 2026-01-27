@@ -2,14 +2,10 @@ use std::{cmp::Ordering, collections::HashMap, str::FromStr};
 
 use rust_bert::pipelines::sequence_classification;
 
-use crate::{
-    Meta,
-    score::{Label, LabelCategory},
-};
+use crate::score::{Label, LabelCategory};
 
 #[derive(Debug, Default, Clone)]
 pub struct ScoreResult {
-    pub meta: Meta,
     pub score: f64,
     pub categories: Vec<ScoreCategory>,
 }
@@ -17,7 +13,6 @@ pub struct ScoreResult {
 impl ScoreResult {
     pub fn new(categories: Vec<ScoreCategory>) -> Self {
         let mut value = Self {
-            meta: Meta::default(),
             score: 0.0,
             categories,
         };

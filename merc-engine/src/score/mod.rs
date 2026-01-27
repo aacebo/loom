@@ -11,7 +11,7 @@ pub use result::*;
 
 use rust_bert::pipelines::zero_shot_classification;
 
-use crate::{Context, Layer};
+use crate::{Context, Layer, LayerResult};
 
 pub struct ScoreLayer {
     threshold: f64,
@@ -22,7 +22,7 @@ impl Layer for ScoreLayer {
     type In = Context;
     type Out = ScoreResult;
 
-    fn invoke(&self, ctx: &mut Self::In) -> merc_error::Result<Self::Out> {
+    fn invoke(&self, ctx: &mut Self::In) -> merc_error::Result<LayerResult<Self::Out>> {
         let started_at = chrono::Utc::now();
         let labels = self.model.predict_multilabel(
             vec![ctx.text()],
@@ -31,14 +31,14 @@ impl Layer for ScoreLayer {
             128,
         )?;
 
-        let mut result = ScoreResult::from(labels);
+        let mut result = LayerResult::new(ScoreResult::from(labels));
 
-        if self.threshold > result.score {
+        if self.threshold > result.data.score {
             return Err(Error::builder()
                 .code(ErrorCode::Cancel)
                 .message(&format!(
                     "score {} is less than minimum threshold {}",
-                    result.score, self.threshold
+                    result.data.score, self.threshold
                 ))
                 .build());
         }
