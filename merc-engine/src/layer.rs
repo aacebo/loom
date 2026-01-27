@@ -1,25 +1,29 @@
+use std::rc::Rc;
+
 use merc_error::Result;
 
-use crate::Map;
+use crate::{Context, Map, Value};
 
 pub trait Layer {
-    type In;
-    type Out: std::fmt::Debug;
-
-    fn invoke(&self, input: &mut Self::In) -> Result<LayerResult<Self::Out>>;
+    fn invoke(&self, ctx: &Context) -> Result<LayerResult>;
 }
 
-#[derive(Debug, Default)]
-pub struct LayerResult<Data: std::fmt::Debug> {
+#[derive(Debug, Clone)]
+pub struct LayerResult {
     pub meta: Map,
-    pub data: Data,
+
+    data: Rc<dyn Value>,
 }
 
-impl<Data: std::fmt::Debug> LayerResult<Data> {
-    pub fn new(data: Data) -> Self {
+impl LayerResult {
+    pub fn new<T: Value>(data: T) -> Self {
         Self {
             meta: Map::default(),
-            data,
+            data: Rc::new(data),
         }
+    }
+
+    pub fn data<T: Value>(&self) -> &T {
+        (self.data.as_ref()).as_any().downcast_ref().unwrap()
     }
 }

@@ -19,13 +19,10 @@ pub struct ScoreLayer {
 }
 
 impl Layer for ScoreLayer {
-    type In = Context;
-    type Out = ScoreResult;
-
-    fn invoke(&self, ctx: &mut Self::In) -> merc_error::Result<LayerResult<Self::Out>> {
+    fn invoke(&self, ctx: &Context) -> merc_error::Result<LayerResult> {
         let started_at = chrono::Utc::now();
         let labels = self.model.predict_multilabel(
-            vec![ctx.text()],
+            vec![ctx.text.as_str()],
             &Label::all().map(|l| l.as_str()),
             None,
             128,
@@ -33,12 +30,13 @@ impl Layer for ScoreLayer {
 
         let mut result = LayerResult::new(ScoreResult::from(labels));
 
-        if self.threshold > result.data.score {
+        if self.threshold > result.data::<ScoreResult>().score {
             return Err(Error::builder()
                 .code(ErrorCode::Cancel)
                 .message(&format!(
                     "score {} is less than minimum threshold {}",
-                    result.data.score, self.threshold
+                    result.data::<ScoreResult>().score,
+                    self.threshold
                 ))
                 .build());
         }

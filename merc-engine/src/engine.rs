@@ -1,5 +1,5 @@
-// use crate::Layer;
+use crate::Layer;
 
-// pub struct Engine {
-//     layers: Vec<Box<dyn Layer>>,
-// }
+pub struct Engine {
+    layers: Vec<Box<dyn Layer>>,
+}
