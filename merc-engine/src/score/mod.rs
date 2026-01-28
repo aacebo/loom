@@ -5,13 +5,14 @@ mod result;
 
 pub use category::*;
 pub use label::*;
-use merc_error::{Error, ErrorCode};
 pub use options::*;
 pub use result::*;
 
 use std::str::FromStr;
 
 use rust_bert::pipelines::zero_shot_classification;
+
+use merc_error::{Error, ErrorCode};
 
 use crate::{Context, Layer, LayerResult};
 
