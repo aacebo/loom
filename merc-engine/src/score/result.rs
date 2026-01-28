@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use rust_bert::pipelines::sequence_classification;
 
@@ -6,27 +6,22 @@ use crate::score::{Label, LabelCategory};
 
 #[derive(Debug, Default, Clone)]
 pub struct ScoreResult {
-    pub score: f64,
+    pub score: f32,
     pub categories: Vec<ScoreCategory>,
 }
 
 impl ScoreResult {
-    pub fn new(categories: Vec<ScoreCategory>) -> Self {
-        let mut value = Self {
-            score: 0.0,
+    pub fn new(groups: Vec<ScoreCategory>) -> Self {
+        let mut categories = groups.clone();
+        categories.sort_by(|a, b| b.score.total_cmp(&a.score));
+
+        Self {
+            score: categories
+                .iter()
+                .map(|value| value.score)
+                .fold(0.0, f32::max),
             categories,
-        };
-
-        for category in &value.categories {
-            if value.score < category.score {
-                value.score = category.score;
-            }
         }
-
-        value
-            .categories
-            .sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));
-        value
     }
 
     pub fn category(&self, label: LabelCategory) -> &ScoreCategory {
@@ -49,7 +44,9 @@ impl From<Vec<Vec<sequence_classification::Label>>> for ScoreResult {
             for class in line {
                 if let Ok(label) = Label::from_str(&class.text) {
                     let labels = categories.entry(label.category()).or_insert(vec![]);
-                    labels.push(ScoreLabel::new(label, class.sentence).with_score(class.score));
+                    labels.push(
+                        ScoreLabel::new(label, class.sentence).with_score(class.score as f32),
+                    );
                 }
             }
         }
@@ -57,7 +54,7 @@ impl From<Vec<Vec<sequence_classification::Label>>> for ScoreResult {
         let mut arr = vec![];
 
         for (label, labels) in categories {
-            arr.push(ScoreCategory::new(label, labels));
+            arr.push(ScoreCategory::topk(label, labels, 2));
         }
 
         Self::new(arr)
@@ -67,35 +64,39 @@ impl From<Vec<Vec<sequence_classification::Label>>> for ScoreResult {
 #[derive(Debug, Clone)]
 pub struct ScoreCategory {
     pub label: LabelCategory,
-    pub score: f64,
+    pub score: f32,
     pub labels: Vec<ScoreLabel>,
 }
 
 impl ScoreCategory {
-    pub fn new(label: LabelCategory, labels: Vec<ScoreLabel>) -> Self {
-        let mut value = Self {
-            label,
-            score: 0.0,
-            labels,
-        };
+    pub fn topk(label: LabelCategory, labels: Vec<ScoreLabel>, k: usize) -> Self {
+        let take = k.min(labels.len()).max(1);
+        let mut top = labels.clone();
+        let mut score = 0.0f32;
 
-        for label in &value.labels {
-            if value.score < label.score {
-                value.score = label.score;
-            }
+        top.sort_by(|a, b| b.score.total_cmp(&a.score));
+        top = top.iter().take(take).map(|v| v.clone()).collect::<Vec<_>>();
+
+        for label in &top {
+            score += label.score;
         }
 
-        value
-            .labels
-            .sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));
-        value
+        Self {
+            label,
+            score: if top.is_empty() {
+                0.0
+            } else {
+                score / take as f32
+            },
+            labels: top,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ScoreLabel {
     pub label: Label,
-    pub score: f64,
+    pub score: f32,
     pub sentence: usize,
 }
 
@@ -108,8 +109,15 @@ impl ScoreLabel {
         }
     }
 
-    pub fn with_score(mut self, value: f64) -> Self {
-        self.score = value;
+    pub fn with_score(mut self, score: f32) -> Self {
+        if score >= self.label.threshold() {
+            self.score = score * self.label.weight();
+        }
+
         self
+    }
+
+    pub fn ignore(&self) -> bool {
+        self.score < self.label.threshold()
     }
 }

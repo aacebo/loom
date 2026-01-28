@@ -14,6 +14,7 @@ impl LabelCategory {
             Self::Sentiment => &[
                 Label::Sentiment(SentimentLabel::Positive),
                 Label::Sentiment(SentimentLabel::Negative),
+                Label::Sentiment(SentimentLabel::Neutral),
             ],
             Self::Emotion => &[
                 Label::Emotion(EmotionLabel::Joy),
@@ -30,14 +31,19 @@ impl LabelCategory {
                 Label::Outcome(OutcomeLabel::Reward),
                 Label::Outcome(OutcomeLabel::Punishment),
                 Label::Outcome(OutcomeLabel::Decision),
-                Label::Outcome(OutcomeLabel::Response),
+                Label::Outcome(OutcomeLabel::Progress),
+                Label::Outcome(OutcomeLabel::Conflict),
             ],
             Self::Context => &[
                 Label::Context(ContextLabel::Fact),
                 Label::Context(ContextLabel::Time),
                 Label::Context(ContextLabel::Place),
-                Label::Context(ContextLabel::Person),
-                Label::Context(ContextLabel::Social),
+                Label::Context(ContextLabel::Entity),
+                Label::Context(ContextLabel::Phatic),
+                Label::Context(ContextLabel::Preference),
+                Label::Context(ContextLabel::Plan),
+                Label::Context(ContextLabel::Goal),
+                Label::Context(ContextLabel::Task),
             ],
         }
     }

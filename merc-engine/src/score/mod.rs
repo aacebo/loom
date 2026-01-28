@@ -16,7 +16,7 @@ use rust_bert::pipelines::zero_shot_classification;
 use crate::{Context, Layer, LayerResult};
 
 pub struct ScoreLayer {
-    threshold: f64,
+    threshold: f32,
     model: zero_shot_classification::ZeroShotClassificationModel,
 }
 
@@ -79,8 +79,22 @@ mod tests {
         let mut context = Context::new("hi how are you?");
         let res = layer.invoke(&mut context);
 
+        if let Ok(v) = &res {
+            println!("{:#?}", v);
+        }
+
         assert!(res.is_err());
         assert_eq!(*res.unwrap_err().code(), ErrorCode::Cancel);
+        Ok(())
+    }
+
+    #[test]
+    fn should_be_stressed() -> Result<()> {
+        let layer = ScoreOptions::new().build()?;
+        let mut context = Context::new("oh my god, I'm going to be late for work!");
+        let res = layer.invoke(&mut context)?;
+
+        println!("{:#?}", &res);
         Ok(())
     }
 }

@@ -13,68 +13,80 @@ pub enum Label {
 }
 
 impl Label {
-    pub fn all() -> [Label; 20] {
+    pub fn all() -> [Self; 26] {
         [
-            Label::Sentiment(SentimentLabel::Positive),
-            Label::Sentiment(SentimentLabel::Negative),
-            Label::Emotion(EmotionLabel::Joy),
-            Label::Emotion(EmotionLabel::Fear),
-            Label::Emotion(EmotionLabel::Shame),
-            Label::Emotion(EmotionLabel::Pride),
-            Label::Emotion(EmotionLabel::Stress),
-            Label::Emotion(EmotionLabel::Anger),
-            Label::Emotion(EmotionLabel::Sad),
-            Label::Outcome(OutcomeLabel::Success),
-            Label::Outcome(OutcomeLabel::Failure),
-            Label::Outcome(OutcomeLabel::Reward),
-            Label::Outcome(OutcomeLabel::Punishment),
-            Label::Outcome(OutcomeLabel::Decision),
-            Label::Outcome(OutcomeLabel::Response),
-            Label::Context(ContextLabel::Fact),
-            Label::Context(ContextLabel::Time),
-            Label::Context(ContextLabel::Place),
-            Label::Context(ContextLabel::Person),
-            Label::Context(ContextLabel::Social),
+            Self::Sentiment(SentimentLabel::Positive),
+            Self::Sentiment(SentimentLabel::Negative),
+            Self::Sentiment(SentimentLabel::Neutral),
+            Self::Emotion(EmotionLabel::Joy),
+            Self::Emotion(EmotionLabel::Fear),
+            Self::Emotion(EmotionLabel::Shame),
+            Self::Emotion(EmotionLabel::Pride),
+            Self::Emotion(EmotionLabel::Stress),
+            Self::Emotion(EmotionLabel::Anger),
+            Self::Emotion(EmotionLabel::Sad),
+            Self::Outcome(OutcomeLabel::Success),
+            Self::Outcome(OutcomeLabel::Failure),
+            Self::Outcome(OutcomeLabel::Reward),
+            Self::Outcome(OutcomeLabel::Punishment),
+            Self::Outcome(OutcomeLabel::Decision),
+            Self::Outcome(OutcomeLabel::Progress),
+            Self::Outcome(OutcomeLabel::Conflict),
+            Self::Context(ContextLabel::Fact),
+            Self::Context(ContextLabel::Time),
+            Self::Context(ContextLabel::Place),
+            Self::Context(ContextLabel::Entity),
+            Self::Context(ContextLabel::Phatic),
+            Self::Context(ContextLabel::Preference),
+            Self::Context(ContextLabel::Plan),
+            Self::Context(ContextLabel::Goal),
+            Self::Context(ContextLabel::Task),
         ]
     }
 
-    pub fn sentiment() -> [Label; 2] {
+    pub fn sentiment() -> [Self; 3] {
         [
-            Label::Sentiment(SentimentLabel::Positive),
-            Label::Sentiment(SentimentLabel::Negative),
+            Self::Sentiment(SentimentLabel::Positive),
+            Self::Sentiment(SentimentLabel::Negative),
+            Self::Sentiment(SentimentLabel::Neutral),
         ]
     }
 
-    pub fn emotion() -> [Label; 7] {
+    pub fn emotion() -> [Self; 7] {
         [
-            Label::Emotion(EmotionLabel::Joy),
-            Label::Emotion(EmotionLabel::Fear),
-            Label::Emotion(EmotionLabel::Shame),
-            Label::Emotion(EmotionLabel::Pride),
-            Label::Emotion(EmotionLabel::Stress),
-            Label::Emotion(EmotionLabel::Anger),
-            Label::Emotion(EmotionLabel::Sad),
+            Self::Emotion(EmotionLabel::Joy),
+            Self::Emotion(EmotionLabel::Fear),
+            Self::Emotion(EmotionLabel::Shame),
+            Self::Emotion(EmotionLabel::Pride),
+            Self::Emotion(EmotionLabel::Stress),
+            Self::Emotion(EmotionLabel::Anger),
+            Self::Emotion(EmotionLabel::Sad),
         ]
     }
 
-    pub fn outcome() -> [Label; 6] {
+    pub fn outcome() -> [Self; 7] {
         [
-            Label::Outcome(OutcomeLabel::Success),
-            Label::Outcome(OutcomeLabel::Failure),
-            Label::Outcome(OutcomeLabel::Reward),
-            Label::Outcome(OutcomeLabel::Punishment),
-            Label::Outcome(OutcomeLabel::Decision),
-            Label::Outcome(OutcomeLabel::Response),
+            Self::Outcome(OutcomeLabel::Success),
+            Self::Outcome(OutcomeLabel::Failure),
+            Self::Outcome(OutcomeLabel::Reward),
+            Self::Outcome(OutcomeLabel::Punishment),
+            Self::Outcome(OutcomeLabel::Decision),
+            Self::Outcome(OutcomeLabel::Progress),
+            Self::Outcome(OutcomeLabel::Conflict),
         ]
     }
 
-    pub fn context() -> [Label; 5] {
+    pub fn context() -> [Self; 9] {
         [
-            Label::Context(ContextLabel::Fact),
-            Label::Context(ContextLabel::Time),
-            Label::Context(ContextLabel::Place),
-            Label::Context(ContextLabel::Person),
-            Label::Context(ContextLabel::Social),
+            Self::Context(ContextLabel::Fact),
+            Self::Context(ContextLabel::Time),
+            Self::Context(ContextLabel::Place),
+            Self::Context(ContextLabel::Entity),
+            Self::Context(ContextLabel::Phatic),
+            Self::Context(ContextLabel::Preference),
+            Self::Context(ContextLabel::Plan),
+            Self::Context(ContextLabel::Goal),
+            Self::Context(ContextLabel::Task),
         ]
     }
 
@@ -102,6 +114,24 @@ impl Label {
             Self::Emotion(v) => v.hypothesis(),
             Self::Outcome(v) => v.hypothesis(),
             Self::Context(v) => v.hypothesis(),
+        }
+    }
+
+    pub fn threshold(&self) -> f32 {
+        match self {
+            Self::Sentiment(v) => v.threshold(),
+            Self::Emotion(v) => v.threshold(),
+            Self::Outcome(v) => v.threshold(),
+            Self::Context(v) => v.threshold(),
+        }
+    }
+
+    pub fn weight(&self) -> f32 {
+        match self {
+            Self::Sentiment(v) => v.weight(),
+            Self::Emotion(v) => v.weight(),
+            Self::Outcome(v) => v.weight(),
+            Self::Context(v) => v.weight(),
         }
     }
 }
@@ -146,6 +176,7 @@ impl std::fmt::Display for Label {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SentimentLabel {
     Negative,
+    Neutral,
     Positive,
 }
 
@@ -154,6 +185,7 @@ impl SentimentLabel {
         match self {
             Self::Positive => "positive",
             Self::Negative => "negative",
+            Self::Neutral => "neutral",
         }
     }
 
@@ -161,7 +193,20 @@ impl SentimentLabel {
         match self {
             Self::Positive => "This text expresses a positive sentiment.",
             Self::Negative => "This text expresses a negative sentiment.",
+            Self::Neutral => "This text expresses a neutral sentiment.",
         }
+    }
+
+    pub fn weight(&self) -> f32 {
+        match self {
+            Self::Negative => 0.35,
+            Self::Positive => 0.30,
+            Self::Neutral => 0.10,
+        }
+    }
+
+    pub fn threshold(&self) -> f32 {
+        0.70
     }
 }
 
@@ -178,6 +223,7 @@ impl FromStr for SentimentLabel {
         match s {
             "positive" => Ok(Self::Positive),
             "negative" => Ok(Self::Negative),
+            "neutral" => Ok(Self::Neutral),
             v => Err(Error::builder()
                 .message(&format!("'{}' is not a valid sentiment label", v))
                 .build()),
@@ -190,6 +236,7 @@ impl std::fmt::Display for SentimentLabel {
         match self {
             Self::Positive => write!(f, "positive"),
             Self::Negative => write!(f, "negative"),
+            Self::Neutral => write!(f, "neutral"),
         }
     }
 }
@@ -228,6 +275,23 @@ impl EmotionLabel {
             Self::Anger => "This text expresses anger or frustration.",
             Self::Sad => "This text expresses sadness or grief.",
         }
+    }
+
+    pub fn weight(&self) -> f32 {
+        match self {
+            // Emotion/sentiment (low-medium; mostly metadata)
+            Self::Stress => 0.45,
+            Self::Fear => 0.40,
+            Self::Anger => 0.40,
+            Self::Sad => 0.40,
+            Self::Shame => 0.35,
+            Self::Pride => 0.30,
+            Self::Joy => 0.30,
+        }
+    }
+
+    pub fn threshold(&self) -> f32 {
+        0.70
     }
 }
 
@@ -277,7 +341,8 @@ pub enum OutcomeLabel {
     Reward,
     Punishment,
     Decision,
-    Response,
+    Progress,
+    Conflict,
 }
 
 impl OutcomeLabel {
@@ -288,7 +353,8 @@ impl OutcomeLabel {
             Self::Reward => "reward",
             Self::Punishment => "punishment",
             Self::Decision => "decision",
-            Self::Response => "response",
+            Self::Progress => "progress",
+            Self::Conflict => "conflict",
         }
     }
 
@@ -299,8 +365,28 @@ impl OutcomeLabel {
             Self::Reward => "This text describes receiving a reward or benefit.",
             Self::Punishment => "This text describes a punishment or consequence.",
             Self::Decision => "This text describes making a decision or choice.",
-            Self::Response => "This text describes a response to a prior action.",
+            Self::Progress => {
+                "This text describes progress, completion, or forward movement on something."
+            }
+            Self::Conflict => "This text describes disagreement, conflict, argument, or tension.",
         }
+    }
+
+    pub fn weight(&self) -> f32 {
+        match self {
+            // Outcome (medium-high)
+            Self::Decision => 0.80,
+            Self::Progress => 0.65,
+            Self::Conflict => 0.65,
+            Self::Success => 0.55,
+            Self::Failure => 0.55,
+            Self::Reward => 0.45,
+            Self::Punishment => 0.45,
+        }
+    }
+
+    pub fn threshold(&self) -> f32 {
+        0.70
     }
 }
 
@@ -320,7 +406,8 @@ impl FromStr for OutcomeLabel {
             "reward" => Ok(Self::Reward),
             "punishment" => Ok(Self::Punishment),
             "decision" => Ok(Self::Decision),
-            "response" => Ok(Self::Response),
+            "progress" => Ok(Self::Progress),
+            "conflict" => Ok(Self::Conflict),
             v => Err(Error::builder()
                 .message(&format!("'{}' is not a valid outcome label", v))
                 .build()),
@@ -336,7 +423,8 @@ impl std::fmt::Display for OutcomeLabel {
             Self::Reward => write!(f, "reward"),
             Self::Punishment => write!(f, "punishment"),
             Self::Decision => write!(f, "decision"),
-            Self::Response => write!(f, "response"),
+            Self::Progress => write!(f, "progress"),
+            Self::Conflict => write!(f, "conflict"),
         }
     }
 }
@@ -346,8 +434,12 @@ pub enum ContextLabel {
     Fact,
     Time,
     Place,
-    Person,
-    Social,
+    Entity,
+    Phatic,
+    Preference,
+    Plan,
+    Goal,
+    Task,
 }
 
 impl ContextLabel {
@@ -356,8 +448,12 @@ impl ContextLabel {
             Self::Fact => "fact",
             Self::Time => "time",
             Self::Place => "place",
-            Self::Person => "person",
-            Self::Social => "social",
+            Self::Entity => "entity",
+            Self::Phatic => "phatic",
+            Self::Preference => "preference",
+            Self::Plan => "plan",
+            Self::Goal => "goal",
+            Self::Task => "task",
         }
     }
 
@@ -366,8 +462,46 @@ impl ContextLabel {
             Self::Fact => "This text states a factual piece of information.",
             Self::Time => "This text references a specific time or date.",
             Self::Place => "This text references a specific location or place.",
-            Self::Person => "This text contains information about a specific named person.",
-            Self::Social => "This text describes a relationship or social dynamic.",
+            Self::Entity => "This text mentions a specific named person, organization, or entity.",
+            Self::Phatic => "This text is a greeting, thanks, farewell, or polite small talk.",
+            Self::Preference => "This text expresses a preference, like, dislike, or opinion.",
+            Self::Plan => "This text describes a plan, commitment, or intention for future action.",
+            Self::Goal => "This text describes a goal, objective, or aspiration.",
+            Self::Task => "This text describes a task, todo item, or reminder.",
+        }
+    }
+
+    pub fn weight(&self) -> f32 {
+        match self {
+            // Memory-bearing context (high impact)
+            Self::Task => 1.00,
+            Self::Plan => 0.90,
+            Self::Goal => 0.90,
+            Self::Preference => 0.85,
+            Self::Fact => 0.80,
+
+            // Useful metadata/context (medium)
+            Self::Entity => 0.65,
+            Self::Time => 0.55,
+            Self::Place => 0.55,
+
+            // Phatic should be strong as a detector, but not “memory importance”
+            Self::Phatic => 0.40,
+        }
+    }
+
+    pub fn threshold(&self) -> f32 {
+        match self {
+            // Special / noisy labels: require higher confidence
+            Self::Phatic => 0.80,
+            Self::Entity => 0.75,
+            // Memory-bearing: allow a bit lower to catch more
+            Self::Task => 0.65,
+            Self::Plan => 0.65,
+            Self::Goal => 0.65,
+            Self::Preference => 0.65,
+            // Default
+            _ => 0.70,
         }
     }
 }
@@ -386,8 +520,12 @@ impl FromStr for ContextLabel {
             "fact" => Ok(Self::Fact),
             "time" => Ok(Self::Time),
             "place" => Ok(Self::Place),
-            "person" => Ok(Self::Person),
-            "social" => Ok(Self::Social),
+            "entity" => Ok(Self::Entity),
+            "phatic" => Ok(Self::Phatic),
+            "preference" => Ok(Self::Preference),
+            "plan" => Ok(Self::Plan),
+            "goal" => Ok(Self::Goal),
+            "task" => Ok(Self::Task),
             v => Err(Error::builder()
                 .message(&format!("'{}' is not a valid context label", v))
                 .build()),
@@ -401,8 +539,12 @@ impl std::fmt::Display for ContextLabel {
             Self::Fact => write!(f, "fact"),
             Self::Time => write!(f, "time"),
             Self::Place => write!(f, "place"),
-            Self::Person => write!(f, "person"),
-            Self::Social => write!(f, "social"),
+            Self::Entity => write!(f, "entity"),
+            Self::Phatic => write!(f, "phatic"),
+            Self::Preference => write!(f, "preference"),
+            Self::Plan => write!(f, "plan"),
+            Self::Goal => write!(f, "goal"),
+            Self::Task => write!(f, "task"),
         }
     }
 }
