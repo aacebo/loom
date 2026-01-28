@@ -11,24 +11,20 @@ use std::{
     task::{Context, Poll, Waker},
 };
 
-pub fn new<T>() -> Task<T> {
-    Task::<T>::new()
-}
+type TaskState<T> = (Option<T>, Option<Waker>);
 
 ///
-/// ## Execute
+/// ## Spawn
 /// represents an async runtime that
 /// can spawn/track/manage tasks
 ///
-pub trait Execute: Send + Sync + 'static {
+pub trait Spawn: Send + Sync + 'static {
     fn spawn<T, F, H>(&self, handler: H) -> Task<T>
     where
         T: Send + 'static,
         F: Future<Output = T> + Send + 'static,
         H: FnOnce() -> F + Send + 'static;
 }
-
-type TaskState<T> = (Option<T>, Option<Waker>);
 
 ///
 /// ## Task
