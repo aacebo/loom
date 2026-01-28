@@ -2,11 +2,12 @@ mod id;
 mod status;
 
 pub use id::*;
+use merc_error::{Error, Result};
 pub use status::*;
 
 use std::{
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
     task::{Context, Poll, Waker},
 };
 
@@ -37,7 +38,7 @@ type TaskState<T> = (Option<T>, Option<Waker>);
 pub struct Task<T> {
     id: TaskId,
     status: TaskStatus,
-    inner: Arc<Mutex<TaskState<T>>>,
+    result: TaskResult<T>,
 }
 
 impl<T> Task<T> {
@@ -45,12 +46,8 @@ impl<T> Task<T> {
         Self {
             id: TaskId::new(),
             status: TaskStatus::Pending,
-            inner: Arc::new(Mutex::new((None, None))),
+            result: TaskResult(Arc::new(Mutex::new((None, None)))),
         }
-    }
-
-    pub fn sender(&self) -> TaskSender<T> {
-        TaskSender(Arc::clone(&self.inner))
     }
 
     pub fn id(&self) -> &TaskId {
@@ -67,41 +64,56 @@ impl<T> Task<T> {
 }
 
 impl<T> Future for Task<T> {
-    type Output = T;
+    type Output = Result<T>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.get_mut();
+        let task = self.get_mut();
 
-        if this.status.is_cancelled() {
+        if task.status.is_cancelled() {
             return Poll::Pending;
         }
 
-        let mut shared = this.inner.lock().unwrap();
+        let mut mutex = task.result.lock();
 
-        if let Some(result) = shared.0.take() {
-            this.status = TaskStatus::Complete;
+        if let Some(result) = mutex.0.take() {
+            task.status = TaskStatus::Complete;
             return Poll::Ready(result);
         }
 
-        shared.1 = Some(cx.waker().clone());
-        this.status = TaskStatus::Running;
+        mutex.1 = Some(cx.waker().clone());
+        task.status = TaskStatus::Running;
         Poll::Pending
     }
 }
 
 ///
-/// ## TaskSender
-/// The sending half used to deliver results to a Task.
+/// ## TaskResult
+/// holds the tasks result state (value or error)
+/// and exposes methods for completing the task.
 ///
-pub struct TaskSender<T>(Arc<Mutex<TaskState<T>>>);
+#[derive(Clone)]
+pub struct TaskResult<T>(Arc<Mutex<TaskState<Result<T>>>>);
 
-impl<T> TaskSender<T> {
-    pub fn send(self, value: T) {
-        let mut shared = self.0.lock().unwrap();
-        shared.0 = Some(value);
+impl<T> TaskResult<T> {
+    pub fn ok(&self, value: T) {
+        let mut mutex = self.lock();
+        mutex.0 = Some(Ok(value));
 
-        if let Some(waker) = shared.1.take() {
+        if let Some(waker) = mutex.1.take() {
             waker.wake();
         }
+    }
+
+    pub fn throw(&self, error: Error) {
+        let mut mutex = self.lock();
+        mutex.0 = Some(Err(error));
+
+        if let Some(waker) = mutex.1.take() {
+            waker.wake();
+        }
+    }
+
+    fn lock(&self) -> MutexGuard<'_, TaskState<Result<T>>> {
+        self.0.lock().unwrap()
     }
 }
