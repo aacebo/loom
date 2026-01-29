@@ -1,5 +1,5 @@
 use actix_web::{App, HttpServer, web};
-use merc_events::{Key, MemoryAction};
+use events::{Key, MemoryAction};
 use sqlx::postgres::PgPoolOptions;
 
 mod config;
@@ -20,12 +20,12 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to create pool");
 
-    sqlx::migrate!("../merc-storage/migrations")
+    sqlx::migrate!("../../crates/storage/migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations");
 
-    let amqp = merc_events::new(&config.rabbitmq_url)
+    let amqp = events::new(&config.rabbitmq_url)
         .with_app_id("merc[api]")
         .with_queue(Key::memory(MemoryAction::Create))
         .with_queue(Key::memory(MemoryAction::Update))

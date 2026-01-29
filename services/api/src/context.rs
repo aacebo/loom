@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
-use merc_events::Socket;
 use sqlx::PgPool;
 
-use merc_storage::Storage;
+use events::Socket;
+use storage::Storage;
 
 #[derive(Clone)]
 pub struct Context {

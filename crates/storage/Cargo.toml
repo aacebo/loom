@@ -1,5 +1,6 @@
 [package]
-name = "merc-worker"
+name = "storage"
+publish = false
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,8 +9,11 @@ documentation.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
+[lib]
+doctest = false
+
 [dependencies]
-tokio = { version = "1", features = ["full"] }
+uuid = { workspace = true }
+chrono = { workspace = true }
 serde = { workspace = true }
-merc-events = { workspace = true }
-merc-error = { workspace = true }
+sqlx = { workspace = true }

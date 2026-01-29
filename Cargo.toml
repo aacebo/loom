@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["merc-*"]
-default-members = ["merc-*"]
+members = ["lib/*", "crates/*", "services/*"]
+default-members = ["lib/*", "crates/*", "services/*"]
 
 [workspace.package]
 version = "0.0.1"
@@ -13,12 +13,18 @@ homepage = "https://www.github.com/aacebo/merc"
 repository = "https://www.github.com/aacebo/merc"
 
 [workspace.dependencies]
-merc-async = { path = "./merc-async", version = "0.0.1" }
-merc-error = { path = "./merc-error", version = "0.0.1" }
-merc-events = { path = "./merc-events", version = "0.0.1" }
-merc-engine = { path = "./merc-engine", version = "0.0.1" }
-merc-storage = { path = "./merc-storage", version = "0.0.1" }
 
+# libs (public)
+merc = { path = "./lib/merc", version = "0.0.1" }
+merc-sync = { path = "./lib/merc-sync", version = "0.0.1" }
+merc-error = { path = "./lib/merc-error", version = "0.0.1" }
+merc-engine = { path = "./lib/merc-engine", version = "0.0.1" }
+
+# crates (private)
+events = { path = "./crates/events", version = "0.0.1" }
+storage = { path = "./crates/storage", version = "0.0.1" }
+
+# 3rd party
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["default", "derive"] }

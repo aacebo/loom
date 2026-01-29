@@ -308,6 +308,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
+name = "api"
+version = "0.0.1"
+dependencies = [
+ "actix-web",
+ "chrono",
+ "events",
+ "serde",
+ "sqlx",
+ "storage",
+ "uuid",
+]
+
+[[package]]
 name = "asn1-rs"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1119,6 +1132,19 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener 5.4.1",
  "pin-project-lite",
+]
+
+[[package]]
+name = "events"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "futures-lite 2.6.1",
+ "lapin",
+ "merc-error",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -1934,24 +1960,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
-name = "merc-api"
+name = "merc"
 version = "0.0.1"
 dependencies = [
- "actix-web",
- "chrono",
+ "merc-engine",
  "merc-error",
- "merc-events",
- "merc-storage",
- "serde",
- "sqlx",
- "uuid",
-]
-
-[[package]]
-name = "merc-async"
-version = "0.0.1"
-dependencies = [
- "merc-error",
+ "merc-sync",
 ]
 
 [[package]]
@@ -1969,36 +1983,10 @@ name = "merc-error"
 version = "0.0.1"
 
 [[package]]
-name = "merc-events"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "futures-lite 2.6.1",
- "lapin",
- "merc-error",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
-name = "merc-storage"
-version = "0.0.1"
-dependencies = [
- "chrono",
- "serde",
- "sqlx",
- "uuid",
-]
-
-[[package]]
-name = "merc-worker"
+name = "merc-sync"
 version = "0.0.1"
 dependencies = [
  "merc-error",
- "merc-events",
- "serde",
- "tokio",
 ]
 
 [[package]]
@@ -3370,6 +3358,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
+name = "storage"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "serde",
+ "sqlx",
+ "uuid",
+]
+
+[[package]]
 name = "stringprep"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4282,6 +4280,16 @@ name = "wit-bindgen"
 version = "0.51.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7249219f66ced02969388cf2bb044a09756a083d0fab1e566056b04d9fbcaa5"
+
+[[package]]
+name = "worker"
+version = "0.0.1"
+dependencies = [
+ "events",
+ "merc",
+ "serde",
+ "tokio",
+]
 
 [[package]]
 name = "writeable"
