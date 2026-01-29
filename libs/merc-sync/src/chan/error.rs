@@ -29,6 +29,9 @@ pub enum SendError {
 
     /// the channel is full
     Full,
+
+    /// timeout
+    Timeout,
 }
 
 impl std::fmt::Display for SendError {
@@ -36,6 +39,7 @@ impl std::fmt::Display for SendError {
         match self {
             Self::Closed => write!(f, "closed"),
             Self::Full => write!(f, "full"),
+            Self::Timeout => write!(f, "timeout"),
         }
     }
 }

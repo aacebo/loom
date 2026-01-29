@@ -1,4 +1,4 @@
-use std::any::type_name_of_val;
+use std::{any::type_name_of_val, time::Duration};
 
 use tokio::sync::mpsc;
 
@@ -106,6 +106,31 @@ impl<T: std::fmt::Debug> MpscSender<T> {
         match self {
             Self::Bound(v) => v.strong_count(),
             Self::UnBound(v) => v.strong_count(),
+        }
+    }
+
+    pub async fn reserve(&self) -> Result<mpsc::Permit<'_, T>, mpsc::error::SendError<()>> {
+        match self {
+            Self::Bound(v) => v.reserve().await,
+            v => panic!("attempted use of {}::reserve", type_name_of_val(v)),
+        }
+    }
+
+    pub async fn send(&self, value: T) -> Result<(), mpsc::error::SendError<T>> {
+        match self {
+            Self::Bound(v) => v.send(value).await,
+            Self::UnBound(v) => v.send(value),
+        }
+    }
+
+    pub async fn send_timeout(
+        &self,
+        value: T,
+        timeout: Duration,
+    ) -> Result<(), mpsc::error::SendTimeoutError<T>> {
+        match self {
+            Self::Bound(v) => v.send_timeout(value, timeout).await,
+            v => panic!("attempted use of {}::send_timeout", type_name_of_val(v)),
         }
     }
 

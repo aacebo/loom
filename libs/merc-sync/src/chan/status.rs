@@ -10,6 +10,36 @@ pub enum State {
     Closed,
 }
 
+impl State {
+    pub fn is_open(&self) -> bool {
+        match self {
+            Self::Open => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_draining(&self) -> bool {
+        match self {
+            Self::Draining => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_closed(&self) -> bool {
+        match self {
+            Self::Closed => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_closing(&self) -> bool {
+        match self {
+            Self::Draining | Self::Closed => true,
+            _ => false,
+        }
+    }
+}
+
 impl Default for State {
     fn default() -> Self {
         Self::Closed
@@ -46,6 +76,17 @@ impl Status {
         }
     }
 
+    pub fn is_full(&self) -> bool {
+        match self.capacity {
+            None => false,
+            Some(cap) => self.len == cap,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn state(&self) -> State {
         self.state
     }
@@ -64,39 +105,15 @@ impl Status {
         self
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-
     pub fn capacity(&self) -> Option<usize> {
         self.capacity
     }
+}
 
-    pub fn is_full(&self) -> bool {
-        match self.capacity {
-            None => false,
-            Some(cap) => self.len == cap,
-        }
-    }
+impl std::ops::Deref for Status {
+    type Target = State;
 
-    pub fn is_open(&self) -> bool {
-        match self.state {
-            State::Open => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_draining(&self) -> bool {
-        match self.state {
-            State::Draining => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_closed(&self) -> bool {
-        match self.state {
-            State::Closed => true,
-            _ => false,
-        }
+    fn deref(&self) -> &Self::Target {
+        &self.state
     }
 }
