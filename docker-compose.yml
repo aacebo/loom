@@ -5,15 +5,17 @@ services:
     container_name: api
     build:
       context: .
-      dockerfile: services/api/Dockerfile
+      dockerfile: bins/api/Dockerfile
     ports:
       - 8080:8080
     environment:
       DATABASE_URL: postgres://admin:admin@postgres:5432/main
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     depends_on:
-      - postgres
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   postgres:
     container_name: postgres
@@ -24,6 +26,11 @@ services:
       POSTGRES_DB: main
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
+    healthcheck:
+      test: pg_isready -U admin -d main
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     container_name: rabbitmq
@@ -34,13 +41,19 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   worker:
     container_name: worker
     build:
       context: .
-      dockerfile: services/worker/Dockerfile
+      dockerfile: bins/worker/Dockerfile
     environment:
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
