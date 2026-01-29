@@ -7,7 +7,8 @@ pub enum TaskStatus {
     Pending,
     Running,
     Cancelled,
-    Complete,
+    Error,
+    Ok,
 }
 
 impl TaskStatus {
@@ -32,9 +33,23 @@ impl TaskStatus {
         }
     }
 
+    pub fn is_error(&self) -> bool {
+        match self {
+            Self::Error => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_ok(&self) -> bool {
+        match self {
+            Self::Ok => true,
+            _ => false,
+        }
+    }
+
     pub fn is_complete(&self) -> bool {
         match self {
-            Self::Complete => true,
+            Self::Cancelled | Self::Error | Self::Ok => true,
             _ => false,
         }
     }
@@ -52,7 +67,8 @@ impl std::fmt::Display for TaskStatus {
             Self::Pending => write!(f, "pending"),
             Self::Running => write!(f, "running"),
             Self::Cancelled => write!(f, "cancelled"),
-            Self::Complete => write!(f, "complete"),
+            Self::Error => write!(f, "error"),
+            Self::Ok => write!(f, "ok"),
         }
     }
 }
