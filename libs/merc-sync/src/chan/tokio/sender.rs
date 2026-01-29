@@ -1,26 +1,17 @@
-use std::{any::type_name_of_val, time::Duration};
+use std::{any::type_name_of_val, sync::Arc, time::Duration};
 
 use tokio::sync::mpsc;
 
-use crate::chan::{Channel, Sender, Status};
+use crate::chan::{Channel, Sender, Status, tokio::TokioChannel};
 
 #[derive(Debug)]
 pub struct TokioSender<T: std::fmt::Debug> {
-    status: Status,
-    inner: MpscSender<T>,
+    parent: Arc<TokioChannel<T>>,
 }
 
-impl<T: std::fmt::Debug> From<MpscSender<T>> for TokioSender<T> {
-    fn from(value: MpscSender<T>) -> Self {
-        let status = match &value {
-            MpscSender::Bound(v) => Status::bound(v.max_capacity()).with_len(v.capacity()),
-            _ => Status::default(),
-        };
-
-        Self {
-            status,
-            inner: value,
-        }
+impl<T: std::fmt::Debug> TokioSender<T> {
+    pub fn new(parent: Arc<TokioChannel<T>>) -> Self {
+        Self { parent }
     }
 }
 
@@ -28,13 +19,13 @@ impl<T: std::fmt::Debug> std::ops::Deref for TokioSender<T> {
     type Target = MpscSender<T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        &self.parent.sender
     }
 }
 
 impl<T: std::fmt::Debug> Channel for TokioSender<T> {
     fn status(&self) -> Status {
-        self.status
+        self.parent.status.into()
     }
 }
 

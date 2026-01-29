@@ -110,10 +110,10 @@ impl Status {
     }
 }
 
-impl std::ops::Deref for Status {
-    type Target = State;
+// impl std::ops::Deref for Status {
+//     type Target = State;
 
-    fn deref(&self) -> &Self::Target {
-        &self.state
-    }
-}
+//     fn deref(&self) -> &Self::Target {
+//         &self.state
+//     }
+// }

@@ -1,26 +1,20 @@
-use std::task::{Context, Poll};
+use std::{
+    sync::Arc,
+    task::{Context, Poll},
+};
 
 use tokio::sync::mpsc;
 
-use crate::chan::{Channel, Receiver, Status};
+use crate::chan::{Channel, Receiver, Status, tokio::TokioChannel};
 
 #[derive(Debug)]
 pub struct TokioReceiver<T: std::fmt::Debug> {
-    status: Status,
-    inner: MpscReceiver<T>,
+    parent: Arc<TokioChannel<T>>,
 }
 
-impl<T: std::fmt::Debug> From<MpscReceiver<T>> for TokioReceiver<T> {
-    fn from(value: MpscReceiver<T>) -> Self {
-        let status = match &value {
-            MpscReceiver::Bound(v) => Status::bound(v.max_capacity()).with_len(v.len()),
-            MpscReceiver::UnBound(v) => Status::default().with_len(v.len()),
-        };
-
-        Self {
-            status,
-            inner: value,
-        }
+impl<T: std::fmt::Debug> TokioReceiver<T> {
+    pub fn new(parent: Arc<TokioChannel<T>>) -> Self {
+        Self { parent }
     }
 }
 
@@ -28,13 +22,13 @@ impl<T: std::fmt::Debug> std::ops::Deref for TokioReceiver<T> {
     type Target = MpscReceiver<T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        &self.parent.receiver
     }
 }
 
 impl<T: std::fmt::Debug> Channel for TokioReceiver<T> {
     fn status(&self) -> Status {
-        self.status
+        self.parent.status.into()
     }
 }
 
