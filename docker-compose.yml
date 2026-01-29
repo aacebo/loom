@@ -2,10 +2,10 @@ name: merc
 
 services:
   api:
-    container_name: merc-api
+    container_name: api
     build:
       context: .
-      dockerfile: merc-api/Dockerfile
+      dockerfile: services/api/Dockerfile
     ports:
       - 8080:8080
     environment:
@@ -36,10 +36,10 @@ services:
       RABBITMQ_DEFAULT_PASS: admin
 
   worker:
-    container_name: merc-worker
+    container_name: worker
     build:
       context: .
-      dockerfile: merc-worker/Dockerfile
+      dockerfile: services/worker/Dockerfile
     environment:
       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672
     depends_on:

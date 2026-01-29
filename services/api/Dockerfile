@@ -8,13 +8,12 @@ RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/li
 
 # Copy workspace files
 COPY Cargo.toml Cargo.lock ./
-COPY merc-error ./merc-error
-COPY merc-events ./merc-events
-COPY merc-storage ./merc-storage
-COPY merc-api ./merc-api
+COPY lib ./lib
+COPY crates ./crates
+COPY services/api ./services/api
 
 # Build release binary
-RUN cargo build --release --package merc-api
+RUN cargo build --release --package api
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -25,8 +24,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-COPY --from=builder /app/target/release/merc-api /app/merc-api
+COPY --from=builder /app/target/release/api /app/api
 
 EXPOSE 8080
 
-CMD ["/app/merc-api"]
+CMD ["/app/api"]
