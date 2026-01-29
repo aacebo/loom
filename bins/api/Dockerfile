@@ -1,10 +1,10 @@
 # Build stage
-FROM rustlang/rust:nightly-slim AS builder
+FROM rust:alpine AS builder
 
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
 # Copy workspace files
 COPY Cargo.toml Cargo.lock ./
@@ -16,12 +16,12 @@ COPY bins/api ./bins/api
 RUN cargo build --release --package api
 
 # Runtime stage
-FROM debian:bookworm-slim
+FROM alpine:latest
 
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates libssl3
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/api /app/api
