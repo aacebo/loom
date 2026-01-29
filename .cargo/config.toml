@@ -1,0 +1,14 @@
+[build]
+# Use all available CPU cores for compilation
+jobs = -1
+
+[alias]
+
+[env]
+RUST_BACKTRACE = "1"
+
+[registries.crates-io]
+protocol = "sparse"
+
+[net]
+retry = 3

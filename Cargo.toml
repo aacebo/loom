@@ -13,7 +13,6 @@ homepage = "https://www.github.com/aacebo/merc"
 repository = "https://www.github.com/aacebo/merc"
 
 [workspace.dependencies]
-
 # libs (public)
 merc = { path = "./libs/merc", version = "0.0.1" }
 merc-sync = { path = "./libs/merc-sync", version = "0.0.1" }
