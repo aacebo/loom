@@ -1,10 +1,7 @@
 mod receiver;
 mod sender;
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicU8, AtomicUsize, Ordering},
-};
+use std::sync::Arc;
 
 pub use receiver::*;
 pub use sender::*;
@@ -23,11 +20,8 @@ pub fn alloc<T: std::fmt::Debug>(capacity: usize) -> TokioChannel<T> {
 
 #[derive(Debug)]
 pub struct TokioChannel<T: std::fmt::Debug> {
-    status: AtomicU8,
-    length: AtomicUsize,
-    capacity: Option<AtomicUsize>,
-    sender: MpscSender<T>,
-    receiver: MpscReceiver<T>,
+    sender: Arc<MpscSender<T>>,
+    receiver: Arc<MpscReceiver<T>>,
 }
 
 impl<T: std::fmt::Debug> TokioChannel<T> {
@@ -35,11 +29,8 @@ impl<T: std::fmt::Debug> TokioChannel<T> {
         let (sender, receiver) = mpsc::unbounded_channel();
 
         Self {
-            status: AtomicU8::new(Status::Open as u8),
-            length: AtomicUsize::new(0),
-            capacity: None,
-            sender: MpscSender::from(sender),
-            receiver: MpscReceiver::from(receiver),
+            sender: Arc::new(MpscSender::from(sender)),
+            receiver: Arc::new(MpscReceiver::from(receiver)),
         }
     }
 
@@ -47,36 +38,39 @@ impl<T: std::fmt::Debug> TokioChannel<T> {
         let (sender, receiver) = mpsc::channel(capacity);
 
         Self {
-            status: AtomicU8::new(Status::Open as u8),
-            length: AtomicUsize::new(0),
-            capacity: Some(AtomicUsize::new(capacity)),
-            sender: MpscSender::from(sender),
-            receiver: MpscReceiver::from(receiver),
+            sender: Arc::new(MpscSender::from(sender)),
+            receiver: Arc::new(MpscReceiver::from(receiver)),
         }
     }
 
-    pub fn sender(self) -> TokioSender<T> {
-        TokioSender::new(Arc::new(self))
+    pub fn sender(&self) -> TokioSender<T> {
+        TokioSender::new(self.clone())
     }
 
-    pub fn receiver(self) -> TokioReceiver<T> {
-        TokioReceiver::new(Arc::new(self))
+    pub fn receiver(&self) -> TokioReceiver<T> {
+        TokioReceiver::new(self.clone())
+    }
+}
+
+impl<T: std::fmt::Debug> Clone for TokioChannel<T> {
+    fn clone(&self) -> Self {
+        Self {
+            sender: Arc::clone(&self.sender),
+            receiver: Arc::clone(&self.receiver),
+        }
     }
 }
 
 impl<T: std::fmt::Debug> Channel for TokioChannel<T> {
     fn status(&self) -> Status {
-        (&self.status).into()
+        self.receiver.status()
     }
 
     fn len(&self) -> usize {
-        self.length.load(Ordering::Relaxed)
+        self.receiver.len()
     }
 
     fn capacity(&self) -> Option<usize> {
-        match &self.capacity {
-            None => None,
-            Some(v) => Some(v.load(Ordering::Relaxed)),
-        }
+        self.receiver.max_capacity()
     }
 }

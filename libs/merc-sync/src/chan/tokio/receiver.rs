@@ -1,20 +1,17 @@
-use std::{
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::task::{Context, Poll};
 
 use tokio::sync::mpsc;
 
 use crate::chan::{Channel, Receiver, Status, tokio::TokioChannel};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TokioReceiver<T: std::fmt::Debug> {
-    parent: Arc<TokioChannel<T>>,
+    channel: TokioChannel<T>,
 }
 
 impl<T: std::fmt::Debug> TokioReceiver<T> {
-    pub fn new(parent: Arc<TokioChannel<T>>) -> Self {
-        Self { parent }
+    pub fn new(channel: TokioChannel<T>) -> Self {
+        Self { channel }
     }
 }
 
@@ -22,21 +19,21 @@ impl<T: std::fmt::Debug> std::ops::Deref for TokioReceiver<T> {
     type Target = MpscReceiver<T>;
 
     fn deref(&self) -> &Self::Target {
-        &self.parent.receiver
+        &self.channel.receiver
     }
 }
 
 impl<T: std::fmt::Debug> Channel for TokioReceiver<T> {
     fn status(&self) -> Status {
-        self.parent.status()
+        self.channel.status()
     }
 
     fn len(&self) -> usize {
-        self.parent.len()
+        self.channel.len()
     }
 
     fn capacity(&self) -> Option<usize> {
-        self.parent.capacity()
+        self.channel.capacity()
     }
 }
 
@@ -55,6 +52,14 @@ pub enum MpscReceiver<T: std::fmt::Debug> {
 }
 
 impl<T: std::fmt::Debug> MpscReceiver<T> {
+    pub fn status(&self) -> Status {
+        if self.is_closed() {
+            Status::Closed
+        } else {
+            Status::Open
+        }
+    }
+
     pub fn is_bound(&self) -> bool {
         match self {
             Self::Bound(_) => true,

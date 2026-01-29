@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicU8, Ordering};
-
 #[repr(u8)]
 #[non_exhaustive]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -40,24 +38,6 @@ impl Status {
         match self {
             Self::Draining | Self::Closed => true,
             _ => false,
-        }
-    }
-
-    pub fn atomic(&self) -> AtomicU8 {
-        match self {
-            Self::Open => AtomicU8::new(0),
-            Self::Draining => AtomicU8::new(1),
-            Self::Closed => AtomicU8::new(2),
-        }
-    }
-}
-
-impl From<&AtomicU8> for Status {
-    fn from(value: &AtomicU8) -> Self {
-        match value.load(Ordering::Relaxed) {
-            0 => Self::Open,
-            1 => Self::Draining,
-            _ => Self::Closed,
         }
     }
 }
