@@ -1,8 +1,9 @@
 use std::{any::type_name_of_val, time::Duration};
 
+use async_trait::async_trait;
 use tokio::sync::mpsc;
 
-use crate::chan::{Channel, Sender, Status};
+use crate::chan::{Channel, Sender, Status, error::SendError};
 
 #[derive(Debug, Clone)]
 pub struct TokioSender<T: std::fmt::Debug> {
@@ -37,11 +38,29 @@ impl<T: std::fmt::Debug> Channel for TokioSender<T> {
     }
 }
 
+#[async_trait]
 impl<T: std::fmt::Debug + Send + 'static> Sender for TokioSender<T> {
     type Item = T;
 
-    fn send(&self, _: Self::Item) -> Result<(), crate::chan::error::SendError> {
-        todo!()
+    async fn send(&self, item: Self::Item) -> Result<(), SendError> {
+        if let Err(_) = self.sender.reserve().await {
+            if self.status().is_closed() {
+                return Err(SendError::Closed);
+            }
+
+            return Err(SendError::Full);
+        }
+
+        match self.sender.send(item).await {
+            Err(_) => {
+                if self.status().is_closed() {
+                    Err(SendError::Closed)
+                } else {
+                    Err(SendError::Full)
+                }
+            }
+            Ok(_) => Ok(()),
+        }
     }
 }
 

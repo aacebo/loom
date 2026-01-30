@@ -3,9 +3,10 @@ use std::{
     task::{Context, Poll},
 };
 
+use async_trait::async_trait;
 use tokio::sync::mpsc;
 
-use crate::chan::{Channel, Receiver, Status};
+use crate::chan::{Channel, Receiver, Status, error::RecvError};
 
 #[derive(Debug, Clone)]
 pub struct TokioReceiver<T: std::fmt::Debug> {
@@ -40,11 +41,21 @@ impl<T: std::fmt::Debug> Channel for TokioReceiver<T> {
     }
 }
 
+#[async_trait]
 impl<T: std::fmt::Debug + Send + 'static> Receiver for TokioReceiver<T> {
     type Item = T;
 
-    fn recv(&self) -> Result<Self::Item, crate::chan::error::RecvError> {
-        todo!()
+    async fn recv(&self) -> Result<Self::Item, RecvError> {
+        match self.recv().await {
+            Err(_) => {
+                if self.status().is_closed() {
+                    Err(RecvError::Closed)
+                } else {
+                    Err(RecvError::Empty)
+                }
+            }
+            Ok(v) => Ok(v),
+        }
     }
 }
 

@@ -15,4 +15,5 @@ doctest = false
 tokio = ["dep:tokio"]
 
 [dependencies]
+async-trait = { workspace = true }
 tokio = { workspace = true, features = ["sync"], optional = true }

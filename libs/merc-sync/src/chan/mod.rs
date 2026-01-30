@@ -6,20 +6,24 @@ pub mod tokio;
 
 pub use status::*;
 
+use async_trait::async_trait;
+
 pub trait Channel {
     fn status(&self) -> Status;
     fn len(&self) -> usize;
     fn capacity(&self) -> Option<usize>;
 }
 
+#[async_trait]
 pub trait Sender: Channel + Send + Sync + 'static {
     type Item;
 
-    fn send(&self, item: Self::Item) -> Result<(), error::SendError>;
+    async fn send(&self, item: Self::Item) -> Result<(), error::SendError>;
 }
 
+#[async_trait]
 pub trait Receiver: Channel + Send + 'static {
     type Item;
 
-    fn recv(&self) -> Result<Self::Item, error::RecvError>;
+    async fn recv(&self) -> Result<Self::Item, error::RecvError>;
 }
