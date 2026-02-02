@@ -85,7 +85,7 @@ For each label prediction from the model:
 ```mermaid
 flowchart LR
     A[Model Prediction] --> B{c >= t?}
-    B -->|Yes| C["S_label = c × w"]
+    B -->|Yes| C["S_label = c * w"]
     B -->|No| D["S_label = 0"]
 ```
 
@@ -102,7 +102,7 @@ Each category aggregates its top-k label scores:
 flowchart TD
     A[All Label Scores] --> B[Sort descending]
     B --> C[Take top k labels<br/>k = min 2, n]
-    C --> D["S_category = Σ(top k scores) / k"]
+    C --> D["S_category = sum(top k) / k"]
 ```
 
 Where:
