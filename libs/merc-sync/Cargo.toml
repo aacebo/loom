@@ -21,3 +21,4 @@ tokio = { workspace = true, features = ["sync", "rt", "time"], optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["sync", "rt", "time", "macros", "rt-multi-thread"] }
+futures = { workspace = true }

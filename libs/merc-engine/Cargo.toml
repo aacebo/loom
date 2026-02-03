@@ -11,6 +11,9 @@ repository.workspace = true
 [lib]
 doctest = false
 
+[features]
+int = []
+
 [dependencies]
 rust-bert = { version = "0.23" }
 tch = { version = "0.17" }

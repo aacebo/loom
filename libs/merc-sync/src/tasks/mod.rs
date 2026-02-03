@@ -11,7 +11,6 @@ pub mod tokio;
 
 pub use error::*;
 pub use id::*;
-pub use join::*;
 pub use resolver::*;
 pub use result::*;
 pub use status::*;

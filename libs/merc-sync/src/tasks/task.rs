@@ -98,20 +98,20 @@ impl<T: Send + 'static> Drop for Task<T> {
 mod tests {
     use super::*;
     use crate::chan::Channel;
-    use crate::tasks::tokio::new;
+    use crate::spawn;
     use futures::future::poll_fn;
 
     #[tokio::test]
     async fn test_new_task_has_pending_status() {
-        let (task, _) = new::<i32>();
+        let (task, _): (Task<i32>, _) = spawn!();
         assert!(task.status().is_pending());
     }
 
     #[tokio::test]
     async fn test_tasks_have_unique_ids() {
-        let (task1, _r1) = new::<i32>();
-        let (task2, _r2) = new::<i32>();
-        let (task3, _r3) = new::<i32>();
+        let (task1, _r1): (Task<i32>, _) = spawn!();
+        let (task2, _r2): (Task<i32>, _) = spawn!();
+        let (task3, _r3): (Task<i32>, _) = spawn!();
 
         assert_ne!(task1.id(), task2.id());
         assert_ne!(task2.id(), task3.id());
@@ -120,22 +120,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_task_and_resolver_share_id() {
-        let (task, resolver) = new::<i32>();
+        let (task, resolver): (Task<i32>, _) = spawn!();
         assert_eq!(task.id(), resolver.id());
     }
 
     #[tokio::test]
     async fn test_channel_len_and_capacity() {
-        let (task, _resolver) = new::<i32>();
+        let (task, _resolver): (Task<i32>, _) = spawn!();
 
-        // Underlying channel has capacity of 1 (from tokio::task())
+        // Underlying channel has capacity of 1 (from spawn!())
         assert_eq!(task.capacity(), Some(1));
         assert_eq!(task.len(), 0);
     }
 
     #[tokio::test]
     async fn test_poll_pending_before_resolve() {
-        let (mut task, _resolver) = new::<i32>();
+        let (mut task, _resolver): (Task<i32>, _) = spawn!();
 
         let poll_result = poll_fn(|cx| {
             let pinned = std::pin::Pin::new(&mut task);
@@ -149,7 +149,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_complete_sets_status_ok() {
-        let (task, resolver) = new::<i32>();
+        let (task, resolver): (Task<i32>, _) = spawn!();
 
         // Use spawn_blocking for blocking send operation
         tokio::task::spawn_blocking(move || {
@@ -162,7 +162,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_status_is_ok_after_complete() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Use spawn_blocking for blocking send operation
         tokio::task::spawn_blocking(move || {
@@ -176,7 +176,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_fail_returns_error_result() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Use spawn_blocking for blocking send operation
         tokio::task::spawn_blocking(move || {
@@ -192,7 +192,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn test_cancel_sets_status_cancelled() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Use spawn_blocking for blocking send operation
         tokio::task::spawn_blocking(move || {
@@ -206,7 +206,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_dropped_resolver_causes_error() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Drop the resolver without completing
         drop(resolver);
@@ -220,7 +220,7 @@ mod tests {
     async fn test_channel_status_open_initially() {
         use crate::chan::Status;
 
-        let (task, _resolver) = new::<i32>();
+        let (task, _resolver): (Task<i32>, _) = spawn!();
         assert_eq!(task.channel().status(), Status::Open);
     }
 
@@ -228,15 +228,15 @@ mod tests {
 
     #[test]
     fn test_new_task_has_pending_status_sync() {
-        let (task, _) = new::<i32>();
+        let (task, _): (Task<i32>, _) = spawn!();
         assert!(task.status().is_pending());
     }
 
     #[test]
     fn test_tasks_have_unique_ids_sync() {
-        let (task1, _r1) = new::<i32>();
-        let (task2, _r2) = new::<i32>();
-        let (task3, _r3) = new::<i32>();
+        let (task1, _r1): (Task<i32>, _) = spawn!();
+        let (task2, _r2): (Task<i32>, _) = spawn!();
+        let (task3, _r3): (Task<i32>, _) = spawn!();
 
         assert_ne!(task1.id(), task2.id());
         assert_ne!(task2.id(), task3.id());
@@ -245,22 +245,22 @@ mod tests {
 
     #[test]
     fn test_task_and_resolver_share_id_sync() {
-        let (task, resolver) = new::<i32>();
+        let (task, resolver): (Task<i32>, _) = spawn!();
         assert_eq!(task.id(), resolver.id());
     }
 
     #[test]
     fn test_channel_len_and_capacity_sync() {
-        let (task, _resolver) = new::<i32>();
+        let (task, _resolver): (Task<i32>, _) = spawn!();
 
-        // Underlying channel has capacity of 1 (from tokio::task())
+        // Underlying channel has capacity of 1 (from spawn!())
         assert_eq!(task.capacity(), Some(1));
         assert_eq!(task.len(), 0);
     }
 
     #[test]
     fn test_complete_returns_ok_sync() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Complete from another thread (blocking send)
         std::thread::spawn(move || {
@@ -273,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_fail_returns_error_result_sync() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         std::thread::spawn(move || {
             resolver.error("something went wrong").unwrap();
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_cancel_returns_cancelled_sync() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         std::thread::spawn(move || {
             resolver.cancel().unwrap();
@@ -299,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_dropped_resolver_causes_recv_error_sync() {
-        let (mut task, resolver) = new::<i32>();
+        let (mut task, resolver): (Task<i32>, _) = spawn!();
 
         // Drop the resolver without completing
         drop(resolver);
@@ -312,7 +312,7 @@ mod tests {
     fn test_channel_status_open_initially_sync() {
         use crate::chan::Status;
 
-        let (task, _resolver) = new::<i32>();
+        let (task, _resolver): (Task<i32>, _) = spawn!();
         assert_eq!(task.channel().status(), Status::Open);
     }
 }

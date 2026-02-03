@@ -4,26 +4,35 @@ mod sender;
 pub use receiver::*;
 pub use sender::*;
 
-use tokio::sync::mpsc;
-
-#[track_caller]
-pub fn open<T: std::fmt::Debug + Send + 'static>() -> (TokioSender<T>, TokioReceiver<T>) {
-    let (sender, receiver) = mpsc::unbounded_channel();
-
-    (
-        TokioSender::new(MpscSender::from(sender)),
-        TokioReceiver::new(MpscReceiver::from(receiver)),
-    )
-}
-
-#[track_caller]
-pub fn alloc<T: std::fmt::Debug + Send + 'static>(
-    capacity: usize,
-) -> (TokioSender<T>, TokioReceiver<T>) {
-    let (sender, receiver) = mpsc::channel(capacity);
-
-    (
-        TokioSender::new(MpscSender::from(sender)),
-        TokioReceiver::new(MpscReceiver::from(receiver)),
-    )
+/// Create a channel for async communication.
+///
+/// # Patterns
+/// - `open!()` - unbounded channel
+/// - `open!(capacity)` - bounded channel with specified capacity
+///
+/// # Examples
+/// ```ignore
+/// let (tx, rx) = open!();        // unbounded
+/// let (tx, rx) = open!(100);     // bounded with capacity 100
+/// ```
+#[macro_export]
+macro_rules! open {
+    () => {{
+        let (sender, receiver) = ::tokio::sync::mpsc::unbounded_channel();
+        (
+            $crate::chan::tokio::TokioSender::new($crate::chan::tokio::MpscSender::from(sender)),
+            $crate::chan::tokio::TokioReceiver::new($crate::chan::tokio::MpscReceiver::from(
+                receiver,
+            )),
+        )
+    }};
+    ($capacity:expr) => {{
+        let (sender, receiver) = ::tokio::sync::mpsc::channel($capacity);
+        (
+            $crate::chan::tokio::TokioSender::new($crate::chan::tokio::MpscSender::from(sender)),
+            $crate::chan::tokio::TokioReceiver::new($crate::chan::tokio::MpscReceiver::from(
+                receiver,
+            )),
+        )
+    }};
 }

@@ -80,10 +80,13 @@ impl Layer for ScoreLayer {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "int")]
     use merc_error::{ErrorCode, Result};
 
+    #[cfg(feature = "int")]
     use crate::{Context, Layer, score::ScoreOptions};
 
+    #[cfg(feature = "int")]
     #[test]
     fn should_cancel() -> Result<()> {
         let layer = ScoreOptions::new().build()?;
@@ -99,6 +102,7 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "int")]
     #[test]
     fn should_be_stressed() -> Result<()> {
         let layer = ScoreOptions::new().build()?;
