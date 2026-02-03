@@ -1,4 +1,4 @@
-use crate::pipe::{Operator, Source};
+use crate::pipe::{Build, Operator, Pipe, Source};
 
 pub struct MapOperator<Input, Output> {
     handler: Box<dyn FnOnce(Input) -> Output>,
@@ -16,7 +16,7 @@ impl<Input: 'static, Output: 'static> Operator<Input> for MapOperator<Input, Out
     type Output = Output;
 
     fn apply(self, src: Source<Input>) -> Source<Self::Output> {
-        Source::new(|| (self.handler)(src.run()))
+        Source::new(|| (self.handler)(src.build()))
     }
 }
 

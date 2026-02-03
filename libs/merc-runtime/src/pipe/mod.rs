@@ -10,3 +10,13 @@ pub trait Operator<Input> {
 
     fn apply(self, src: Source<Input>) -> Source<Self::Output>;
 }
+
+pub trait Pipe<Input> {
+    fn pipe<Op: Operator<Input>>(self, op: Op) -> Source<Op::Output>;
+}
+
+pub trait Build {
+    type Output;
+
+    fn build(self) -> Self::Output;
+}

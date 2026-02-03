@@ -1,39 +1,20 @@
 pub mod bench;
 mod context;
+mod data_source;
+mod document;
 mod layer;
 mod map;
+mod media_type;
 mod options;
 pub mod pipe;
 pub mod score;
 
 pub use context::*;
+pub use data_source::*;
+pub use document::*;
 pub use layer::*;
 pub use map::*;
+pub use media_type::*;
 pub use options::*;
 
-pub trait Value: std::any::Any + std::fmt::Debug {
-    fn as_any(&self) -> &dyn std::any::Any;
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-}
-
-impl<T: std::any::Any + std::fmt::Debug> Value for T {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
-impl<T: Value> AsRef<T> for dyn Value {
-    fn as_ref(&self) -> &T {
-        self.as_any().downcast_ref().unwrap()
-    }
-}
-
-impl<T: Value> AsMut<T> for dyn Value {
-    fn as_mut(&mut self) -> &mut T {
-        self.as_any_mut().downcast_mut().unwrap()
-    }
-}
+pub struct Runtime {}

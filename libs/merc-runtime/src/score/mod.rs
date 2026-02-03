@@ -9,7 +9,10 @@ pub use label::*;
 pub use options::*;
 pub use result::*;
 
-use crate::{pipe, threshold};
+use crate::{
+    pipe::{self, Build},
+    threshold,
+};
 
 use rust_bert::pipelines::zero_shot_classification;
 
@@ -76,7 +79,7 @@ impl<Input: 'static> pipe::Operator<Context<Input>> for ScoreLayer {
     type Output = merc_error::Result<LayerResult<ScoreResult>>;
 
     fn apply(self, src: pipe::Source<Context<Input>>) -> pipe::Source<Self::Output> {
-        pipe::Source::new(move || self.invoke(src.run()))
+        pipe::Source::new(move || self.invoke(src.build()))
     }
 }
 
@@ -91,9 +94,11 @@ mod tests {
     #[cfg(feature = "int")]
     #[test]
     fn should_cancel() -> Result<()> {
+        use crate::pipe::{Build, Pipe};
+
         let layer = ScoreOptions::new().build()?;
         let context = Context::new("hi how are you?", ());
-        let res = Source::from(context).pipe(layer).run();
+        let res = Source::from(context).pipe(layer).build();
 
         if let Ok(v) = &res {
             println!("{:#?}", v);
@@ -107,9 +112,11 @@ mod tests {
     #[cfg(feature = "int")]
     #[test]
     fn should_be_stressed() -> Result<()> {
+        use crate::pipe::{Build, Pipe};
+
         let layer = ScoreOptions::new().build()?;
         let context = Context::new("oh my god, I'm going to be late for work!", ());
-        let res = Source::from(context).pipe(layer).run()?;
+        let res = Source::from(context).pipe(layer).build()?;
 
         println!("{:#?}", &res);
         Ok(())

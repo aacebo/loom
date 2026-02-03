@@ -1,4 +1,4 @@
-use crate::pipe::{Operator, Source};
+use crate::pipe::{Build, Operator, Pipe, Source};
 
 pub struct Transformer<Input, Output> {
     source: Source<Input>,
@@ -12,12 +12,18 @@ impl<Input, Output> Transformer<Input, Output> {
             handler: Box::new(handler),
         }
     }
+}
 
-    pub fn run(self) -> Output {
-        (self.handler)(self.source.run())
-    }
-
-    pub fn pipe<Op: Operator<Input>>(self, op: Op) -> Source<Op::Output> {
+impl<Input, Output> Pipe<Input> for Transformer<Input, Output> {
+    fn pipe<Op: Operator<Input>>(self, op: Op) -> Source<Op::Output> {
         op.apply(self.source)
+    }
+}
+
+impl<Input, Output> Build for Transformer<Input, Output> {
+    type Output = Output;
+
+    fn build(self) -> Self::Output {
+        (self.handler)(self.source.build())
     }
 }

@@ -1,4 +1,4 @@
-use crate::pipe::Operator;
+use crate::pipe::{Build, Operator, Pipe};
 
 pub struct Source<T> {
     handler: Box<dyn FnOnce() -> T>,
@@ -10,14 +10,6 @@ impl<T> Source<T> {
             handler: Box::new(handler),
         }
     }
-
-    pub fn run(self) -> T {
-        (self.handler)()
-    }
-
-    pub fn pipe<Op: Operator<T>>(self, op: Op) -> Source<Op::Output> {
-        op.apply(self)
-    }
 }
 
 impl<T: 'static> From<T> for Source<T> {
@@ -25,5 +17,19 @@ impl<T: 'static> From<T> for Source<T> {
         Self {
             handler: Box::new(|| value),
         }
+    }
+}
+
+impl<T: 'static> Pipe<T> for Source<T> {
+    fn pipe<Op: Operator<T>>(self, op: Op) -> Source<Op::Output> {
+        op.apply(self)
+    }
+}
+
+impl<T> Build for Source<T> {
+    type Output = T;
+
+    fn build(self) -> Self::Output {
+        (self.handler)()
     }
 }
