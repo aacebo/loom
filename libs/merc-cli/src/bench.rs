@@ -17,6 +17,9 @@ pub enum BenchAction {
         /// Enable dynamic thresholds based on text length
         #[arg(short, long)]
         dynamic: bool,
+        /// Show detailed per-category and per-label results
+        #[arg(short, long)]
+        verbose: bool,
     },
     /// Validate a benchmark dataset
     Validate {
@@ -36,13 +39,14 @@ pub fn run(action: BenchAction) {
             path,
             threshold,
             dynamic,
-        } => run_benchmark(&path, threshold, dynamic),
+            verbose,
+        } => run_benchmark(&path, threshold, dynamic, verbose),
         BenchAction::Validate { path } => validate_dataset(&path),
         BenchAction::Coverage { path } => show_coverage(&path),
     }
 }
 
-fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool) {
+fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool, verbose: bool) {
     println!("Loading dataset from {:?}...", path);
 
     let dataset = match BenchDataset::load(path) {
@@ -70,7 +74,7 @@ fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool) {
         let empty = bar_width - filled;
         let status = if p.correct { "✓" } else { "✗" };
         print!(
-            "\r[{}{}] {:3}% ({:3}/{:3}) {} {}",
+            "\r[{}{}] {:3}% ({:3}/{:3}) {} {}\x1B[K",
             "█".repeat(filled),
             "░".repeat(empty),
             pct,
@@ -79,8 +83,6 @@ fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool) {
             status,
             p.sample_id
         );
-        // Pad to clear any leftover characters from longer sample IDs
-        print!("{}", " ".repeat(20));
         let _ = io::stdout().flush();
     }) {
         Ok(r) => r,
@@ -91,8 +93,14 @@ fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool) {
     };
 
     // Clear the progress line
-    print!("\r{}\r", " ".repeat(80));
+    print!("\r\x1B[K");
     println!("Completed {} samples\n", total);
+
+    // Display prominent score summary
+    let score_out_of_100 = (result.accuracy * 100.0).round() as u32;
+    println!("========================================");
+    println!("  SCORE: {}/100 ({:.1}%)", score_out_of_100, result.accuracy * 100.0);
+    println!("========================================\n");
 
     println!("=== Benchmark Results ===\n");
     println!("Total samples: {}", result.total);
@@ -106,65 +114,67 @@ fn run_benchmark(path: &PathBuf, threshold: f32, dynamic: bool) {
     println!("Recall:    {:.3}", result.recall);
     println!("F1 Score:  {:.3}", result.f1);
 
-    println!("\n=== Per-Category Results ===\n");
-    let mut categories: Vec<_> = result.per_category.iter().collect();
-    categories.sort_by_key(|(cat, _)| format!("{:?}", cat));
-    for (category, cat_result) in categories {
+    if verbose {
+        println!("\n=== Per-Category Results ===\n");
+        let mut categories: Vec<_> = result.per_category.iter().collect();
+        categories.sort_by_key(|(cat, _)| format!("{:?}", cat));
+        for (category, cat_result) in categories {
+            println!(
+                "{:12} {:3}/{:3} ({:.1}%)",
+                format!("{:?}", category),
+                cat_result.correct,
+                cat_result.total,
+                cat_result.accuracy * 100.0
+            );
+        }
+
+        println!("\n=== Per-Label Results ===\n");
         println!(
-            "{:12} {:3}/{:3} ({:.1}%)",
-            format!("{:?}", category),
-            cat_result.correct,
-            cat_result.total,
-            cat_result.accuracy * 100.0
+            "{:20} {:>6} {:>6} {:>6} {:>8} {:>8} {:>8}",
+            "Label", "Expect", "Detect", "TP", "Prec", "Recall", "F1"
         );
-    }
+        println!("{}", "-".repeat(74));
 
-    println!("\n=== Per-Label Results ===\n");
-    println!(
-        "{:20} {:>6} {:>6} {:>6} {:>8} {:>8} {:>8}",
-        "Label", "Expect", "Detect", "TP", "Prec", "Recall", "F1"
-    );
-    println!("{}", "-".repeat(74));
-
-    let mut labels: Vec<_> = result.per_label.iter().collect();
-    labels.sort_by_key(|(label, _)| label.as_str());
-    for (label, label_result) in labels {
-        if label_result.expected_count > 0 || label_result.detected_count > 0 {
-            println!(
-                "{:20} {:>6} {:>6} {:>6} {:>8.3} {:>8.3} {:>8.3}",
-                label,
-                label_result.expected_count,
-                label_result.detected_count,
-                label_result.true_positives,
-                label_result.precision,
-                label_result.recall,
-                label_result.f1
-            );
+        let mut labels: Vec<_> = result.per_label.iter().collect();
+        labels.sort_by_key(|(label, _)| label.as_str());
+        for (label, label_result) in labels {
+            if label_result.expected_count > 0 || label_result.detected_count > 0 {
+                println!(
+                    "{:20} {:>6} {:>6} {:>6} {:>8.3} {:>8.3} {:>8.3}",
+                    label,
+                    label_result.expected_count,
+                    label_result.detected_count,
+                    label_result.true_positives,
+                    label_result.precision,
+                    label_result.recall,
+                    label_result.f1
+                );
+            }
         }
-    }
 
-    // Show misclassified samples
-    let incorrect: Vec<_> = result
-        .sample_results
-        .iter()
-        .filter(|s| !s.correct)
-        .collect();
+        // Show misclassified samples
+        let incorrect: Vec<_> = result
+            .sample_results
+            .iter()
+            .filter(|s| !s.correct)
+            .collect();
 
-    if !incorrect.is_empty() {
-        println!("\n=== Misclassified Samples ({}) ===\n", incorrect.len());
-        for sample in incorrect.iter().take(10) {
-            println!("ID: {}", sample.id);
-            println!(
-                "  Expected: {:?}, Actual: {:?}",
-                sample.expected_decision, sample.actual_decision
-            );
-            println!("  Score: {:.3}", sample.score);
-            println!("  Expected labels: {:?}", sample.expected_labels);
-            println!("  Detected labels: {:?}", sample.detected_labels);
-            println!();
-        }
-        if incorrect.len() > 10 {
-            println!("... and {} more", incorrect.len() - 10);
+        if !incorrect.is_empty() {
+            println!("\n=== Misclassified Samples ({}) ===\n", incorrect.len());
+            for sample in incorrect.iter().take(10) {
+                println!("ID: {}", sample.id);
+                println!(
+                    "  Expected: {:?}, Actual: {:?}",
+                    sample.expected_decision, sample.actual_decision
+                );
+                println!("  Score: {:.3}", sample.score);
+                println!("  Expected labels: {:?}", sample.expected_labels);
+                println!("  Detected labels: {:?}", sample.detected_labels);
+                println!();
+            }
+            if incorrect.len() > 10 {
+                println!("... and {} more", incorrect.len() - 10);
+            }
         }
     }
 }

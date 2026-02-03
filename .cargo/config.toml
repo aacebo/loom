@@ -3,6 +3,7 @@
 jobs = -1
 
 [alias]
+merc = "run --package merc-cli -- "
 
 [env]
 RUST_BACKTRACE = "1"
