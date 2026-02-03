@@ -6,7 +6,7 @@ default-members = ["libs/*", "crates/*", "bins/*"]
 [workspace.package]
 version = "0.0.1"
 edition = "2024"
-license = "MIT"
+license = "Apache-2.0"
 readme = "README.md"
 documentation = "https://www.github.com/aacebo/merc"
 homepage = "https://www.github.com/aacebo/merc"
