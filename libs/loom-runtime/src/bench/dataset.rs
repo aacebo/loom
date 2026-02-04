@@ -2,18 +2,16 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
-
 use crate::score::Label;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BenchDataset {
     pub version: String,
     pub created: String,
     pub samples: Vec<BenchSample>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BenchSample {
     pub id: String,
     pub text: String,
@@ -27,15 +25,15 @@ pub struct BenchSample {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Decision {
     Accept,
     Reject,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Category {
     Task,
     Emotional,
@@ -46,15 +44,15 @@ pub enum Category {
     Ambiguous,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Difficulty {
     Easy,
     Medium,
     Hard,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct ValidationError {
     pub sample_id: String,
     pub message: String,
@@ -66,7 +64,7 @@ impl std::fmt::Display for ValidationError {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CoverageReport {
     pub total_samples: usize,
     pub samples_by_category: std::collections::HashMap<Category, usize>,
