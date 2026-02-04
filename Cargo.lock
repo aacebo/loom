@@ -2244,6 +2244,13 @@ dependencies = [
 [[package]]
 name = "loom-signal"
 version = "0.0.1"
+dependencies = [
+ "loom-core",
+ "saphyr",
+ "serde",
+ "serde_json",
+ "toml",
+]
 
 [[package]]
 name = "loom-sync"

@@ -11,4 +11,15 @@ repository.workspace = true
 [lib]
 doctest = false
 
+[features]
+default = ["json"]
+json = ["dep:serde_json"]
+yaml = ["dep:saphyr"]
+toml = ["dep:toml"]
+
 [dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true, optional = true }
+saphyr = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+loom-core = { workspace = true }

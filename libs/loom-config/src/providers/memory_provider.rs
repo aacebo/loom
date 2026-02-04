@@ -1,5 +1,5 @@
-use crate::path::{FieldPath, FieldSegment};
-use crate::value::{Object, Value};
+use loom_core::path::{FieldPath, FieldSegment};
+use loom_core::value::{Object, Value};
 
 use super::{ConfigError, Provider};
 

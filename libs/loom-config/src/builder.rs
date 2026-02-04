@@ -1,108 +1,54 @@
-use std::path::PathBuf;
+use loom_core::Format;
+use loom_core::path::Path;
+use loom_core::value::{Object, Value};
 
-use crate::value::{Object, Value};
+use super::providers::Provider;
+use super::{Config, ConfigError, Env};
 
-use super::providers::{EnvProvider, FileProvider, MemoryProvider, Provider};
-use super::{ConfigError, ConfigRoot};
-
-/// Builder for constructing layered configuration
+#[derive(Default)]
 pub struct ConfigBuilder {
     providers: Vec<Box<dyn Provider>>,
-    base_path: Option<PathBuf>,
-}
-
-impl Default for ConfigBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    env: Option<Env>,
+    path: Option<Path>,
+    format: Option<Format>,
 }
 
 impl ConfigBuilder {
     pub fn new() -> Self {
-        Self {
-            providers: Vec::new(),
-            base_path: None,
-        }
+        Self::default()
     }
 
-    /// Set the base path for file-based providers
-    pub fn set_base_path<P: Into<PathBuf>>(mut self, path: P) -> Self {
-        self.base_path = Some(path.into());
-        self
-    }
-
-    /// Add a custom provider
-    pub fn add_provider<P: Provider + 'static>(mut self, provider: P) -> Self {
+    pub fn with_provider<P: Provider + 'static>(mut self, provider: P) -> Self {
         self.providers.push(Box::new(provider));
         self
     }
 
-    /// Add a JSON configuration file
-    #[cfg(feature = "json")]
-    pub fn add_json_file<P: AsRef<str>>(self, path: P) -> Self {
-        self.add_json_file_optional(path, false)
-    }
-
-    /// Add an optional JSON configuration file
-    #[cfg(feature = "json")]
-    pub fn add_json_file_optional<P: AsRef<str>>(mut self, path: P, optional: bool) -> Self {
-        let full_path = self.resolve_path(path.as_ref());
-        self.providers
-            .push(Box::new(FileProvider::json(full_path, optional)));
+    pub fn with_env(mut self, env: Env) -> Self {
+        self.env = Some(env);
         self
     }
 
-    /// Add a YAML configuration file
-    #[cfg(feature = "yaml")]
-    pub fn add_yaml_file<P: AsRef<str>>(self, path: P) -> Self {
-        self.add_yaml_file_optional(path, false)
-    }
-
-    /// Add an optional YAML configuration file
-    #[cfg(feature = "yaml")]
-    pub fn add_yaml_file_optional<P: AsRef<str>>(mut self, path: P, optional: bool) -> Self {
-        let full_path = self.resolve_path(path.as_ref());
-        self.providers
-            .push(Box::new(FileProvider::yaml(full_path, optional)));
+    pub fn with_path(mut self, path: Path) -> Self {
+        self.path = Some(path);
         self
     }
 
-    /// Add environment variables with a prefix filter
-    /// Variables like "APP_DATABASE_HOST" become "database.host" with prefix "APP_"
-    pub fn add_env_variables(mut self, prefix: Option<&str>) -> Self {
-        self.providers.push(Box::new(EnvProvider::new(prefix)));
+    pub fn with_format(mut self, format: Format) -> Self {
+        self.format = Some(format);
         self
     }
 
-    /// Add in-memory configuration (useful for defaults or testing)
-    pub fn add_in_memory<I, K, V>(mut self, items: I) -> Self
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: AsRef<str>,
-        V: Into<Value>,
-    {
-        self.providers
-            .push(Box::new(MemoryProvider::from_pairs(items)));
-        self
-    }
-
-    /// Add in-memory configuration from a Value
-    pub fn add_in_memory_value(mut self, value: Value) -> Self {
-        self.providers
-            .push(Box::new(MemoryProvider::from_value(value)));
-        self
-    }
-
-    pub fn build(self) -> Result<ConfigRoot, ConfigError> {
+    pub fn build(self) -> Result<Config, ConfigError> {
         use super::ConfigSource;
 
+        let env = self.env.unwrap_or_else(Env::from_env);
         let mut merged = Value::Object(Object::new());
         let mut sources = Vec::new();
 
         for provider in &self.providers {
             match provider.load() {
                 Ok(Some(value)) => {
-                    merged.deep_merge(value);
+                    merged.merge(value);
                     sources.push(ConfigSource {
                         name: provider.name().to_string(),
                         path: provider.path(),
@@ -122,47 +68,41 @@ impl ConfigBuilder {
             }
         }
 
-        Ok(ConfigRoot::with_sources(merged, sources))
-    }
-
-    fn resolve_path(&self, path: &str) -> PathBuf {
-        if let Some(ref base) = self.base_path {
-            base.join(path)
-        } else {
-            PathBuf::from(path)
-        }
+        Ok(Config {
+            env,
+            path: self.path,
+            format: self.format,
+            data: merged,
+            sources,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::providers::MemoryProvider;
     use super::*;
-    use crate::path::FieldPath;
+    use loom_core::path::{FieldPath, FilePath};
 
     #[test]
-    fn test_builder_in_memory() {
-        let config = ConfigBuilder::new()
-            .add_in_memory([
+    fn test_builder_with_provider() {
+        let config = Config::new()
+            .with_provider(MemoryProvider::from_pairs([
                 ("database.host", "localhost"),
                 ("database.port", "5432"),
-                ("logging.level", "info"),
-            ])
+            ]))
             .build()
             .unwrap();
 
         let path = FieldPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("localhost"));
-
-        let path = FieldPath::parse("logging.level").unwrap();
-        assert_eq!(config.get_str(&path), Some("info"));
     }
 
     #[test]
     fn test_builder_merge_order() {
-        // Later providers should override earlier ones
-        let config = ConfigBuilder::new()
-            .add_in_memory([("database.host", "first")])
-            .add_in_memory([("database.host", "second")])
+        let config = Config::new()
+            .with_provider(MemoryProvider::from_pairs([("database.host", "first")]))
+            .with_provider(MemoryProvider::from_pairs([("database.host", "second")]))
             .build()
             .unwrap();
 
@@ -171,36 +111,52 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_deep_merge() {
-        let config = ConfigBuilder::new()
-            .add_in_memory([("database.host", "localhost"), ("database.port", "5432")])
-            .add_in_memory([("database.host", "remotehost"), ("logging.level", "debug")])
+    fn test_builder_merge() {
+        let config = Config::new()
+            .with_provider(MemoryProvider::from_pairs([
+                ("database.host", "localhost"),
+                ("database.port", "5432"),
+            ]))
+            .with_provider(MemoryProvider::from_pairs([
+                ("database.host", "remotehost"),
+                ("logging.level", "debug"),
+            ]))
             .build()
             .unwrap();
 
-        // database.host should be overridden
         let path = FieldPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("remotehost"));
 
-        // database.port should still exist
         let path = FieldPath::parse("database.port").unwrap();
         assert_eq!(config.get_str(&path), Some("5432"));
 
-        // logging.level should be added
         let path = FieldPath::parse("logging.level").unwrap();
         assert_eq!(config.get_str(&path), Some("debug"));
     }
 
     #[test]
     fn test_builder_empty() {
-        let config = ConfigBuilder::new().build().unwrap();
+        let config = Config::new().build().unwrap();
         assert!(config.as_value().is_empty());
     }
 
     #[test]
-    fn test_builder_base_path() {
-        let builder = ConfigBuilder::new().set_base_path("/config");
-        let path = builder.resolve_path("app.json");
-        assert_eq!(path, PathBuf::from("/config/app.json"));
+    fn test_builder_with_env() {
+        let config = Config::new().with_env(Env::Dev).build().unwrap();
+
+        assert!(config.env().is_dev());
+    }
+
+    #[test]
+    fn test_builder_with_path_and_format() {
+        let config = Config::new()
+            .with_provider(MemoryProvider::from_pairs([("key", "value")]))
+            .with_path(Path::File(FilePath::parse("config.json")))
+            .with_format(Format::Json)
+            .build()
+            .unwrap();
+
+        assert!(config.path().is_some());
+        assert_eq!(config.format(), Some(Format::Json));
     }
 }

@@ -1,4 +1,4 @@
-use crate::Map;
+use loom_core::Map;
 
 #[derive(Debug, Default)]
 pub struct Context<Input> {

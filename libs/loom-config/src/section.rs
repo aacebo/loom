@@ -1,11 +1,10 @@
 use serde::de::DeserializeOwned;
 
-use crate::path::{FieldPath, FieldSegment};
-use crate::value::Value;
+use loom_core::path::{FieldPath, FieldSegment};
+use loom_core::value::Value;
 
 use super::ConfigError;
 
-/// A view into a section of configuration (can be Object or Array)
 #[derive(Debug, Clone)]
 pub struct ConfigSection<'a> {
     value: Option<&'a Value>,
@@ -24,37 +23,30 @@ impl<'a> ConfigSection<'a> {
         }
     }
 
-    /// The path to this section
     pub fn path(&self) -> &FieldPath {
         &self.path
     }
 
-    /// Whether this section exists
     pub fn exists(&self) -> bool {
         self.value.is_some()
     }
 
-    /// Get the underlying value
     pub fn value(&self) -> Option<&'a Value> {
         self.value
     }
 
-    /// Check if this section is an object
     pub fn is_object(&self) -> bool {
         self.value.map(|v| v.is_object()).unwrap_or(false)
     }
 
-    /// Check if this section is an array
     pub fn is_array(&self) -> bool {
         self.value.map(|v| v.is_array()).unwrap_or(false)
     }
 
-    /// Get value at relative path
     pub fn get(&self, path: &FieldPath) -> Option<&'a Value> {
         self.value?.get_by_path(path)
     }
 
-    /// Get child section by key (for objects)
     pub fn get_section(&self, key: &str) -> ConfigSection<'a> {
         let child_value = self.value.and_then(|v| match v {
             Value::Object(obj) => obj.get(key),
@@ -77,7 +69,6 @@ impl<'a> ConfigSection<'a> {
         ConfigSection::new(child_value, child_path)
     }
 
-    /// Get child section by index (for arrays)
     pub fn get_index(&self, index: usize) -> ConfigSection<'a> {
         let child_value = self.value.and_then(|v| match v {
             Value::Array(arr) => arr.get(index),
@@ -95,7 +86,6 @@ impl<'a> ConfigSection<'a> {
         ConfigSection::new(child_value, child_path)
     }
 
-    /// Bind this section to a strongly-typed object
     pub fn bind<T: DeserializeOwned>(&self) -> Result<T, ConfigError> {
         let value = self
             .value
@@ -105,7 +95,6 @@ impl<'a> ConfigSection<'a> {
         serde_json::from_value(json).map_err(ConfigError::deserialize)
     }
 
-    /// Get object keys (if this section is an object)
     pub fn keys(&self) -> Option<impl Iterator<Item = &'a str>> {
         match self.value? {
             Value::Object(obj) => Some(obj.keys().map(|s| s.as_str())),
@@ -113,7 +102,6 @@ impl<'a> ConfigSection<'a> {
         }
     }
 
-    /// Get array length (if this section is an array)
     pub fn len(&self) -> Option<usize> {
         match self.value? {
             Value::Array(arr) => Some(arr.len()),
@@ -122,12 +110,10 @@ impl<'a> ConfigSection<'a> {
         }
     }
 
-    /// Check if the section is empty
     pub fn is_empty(&self) -> Option<bool> {
         self.len().map(|l| l == 0)
     }
 
-    /// Iterate children as sections
     pub fn children(&self) -> Vec<ConfigSection<'a>> {
         match self.value {
             Some(Value::Object(obj)) => obj
@@ -163,10 +149,10 @@ impl<'a> ConfigSection<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::value::Object;
+    use loom_core::value::Object;
 
     fn create_test_config() -> Value {
-        use crate::value::Number;
+        use loom_core::value::Number;
 
         let mut db = Object::new();
         db.insert("host".to_string(), Value::String("localhost".to_string()));

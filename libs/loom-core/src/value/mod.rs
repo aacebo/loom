@@ -28,8 +28,6 @@ impl Value {
         }
     }
 
-    // Type checking methods
-
     pub fn is_null(&self) -> bool {
         matches!(self, Self::Null)
     }
@@ -61,8 +59,6 @@ impl Value {
     pub fn is_float(&self) -> bool {
         matches!(self, Self::Number(Number::Float(_)))
     }
-
-    // Value extraction methods
 
     pub fn as_bool(&self) -> Option<bool> {
         match self {
@@ -139,13 +135,12 @@ impl Value {
         }
     }
 
-    /// Deep merge another Value into self
-    pub fn deep_merge(&mut self, source: Value) {
+    pub fn merge(&mut self, source: Value) {
         match (self, source) {
             (Value::Object(target), Value::Object(source)) => {
                 for (key, source_value) in source.iter() {
                     match target.get_mut(key) {
-                        Some(target_value) => target_value.deep_merge(source_value.clone()),
+                        Some(target_value) => target_value.merge(source_value.clone()),
                         None => {
                             target.insert(key.clone(), source_value.clone());
                         }
@@ -156,7 +151,6 @@ impl Value {
         }
     }
 
-    /// Get value by FieldPath, traversing objects and arrays
     pub fn get_by_path(&self, path: &crate::path::FieldPath) -> Option<&Value> {
         use crate::path::FieldSegment;
 
@@ -173,7 +167,6 @@ impl Value {
         Some(current)
     }
 
-    /// Get mutable value by FieldPath
     pub fn get_by_path_mut(&mut self, path: &crate::path::FieldPath) -> Option<&mut Value> {
         use crate::path::FieldSegment;
 

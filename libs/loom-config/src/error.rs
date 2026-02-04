@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::path::FieldPathError;
+use loom_core::path::FieldPathError;
 
 /// Errors that can occur during configuration operations
 #[derive(Debug)]

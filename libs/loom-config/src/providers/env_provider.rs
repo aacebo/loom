@@ -1,7 +1,7 @@
 use std::env;
 
-use crate::path::FieldPath;
-use crate::value::{Number, Object, Value};
+use loom_core::path::FieldPath;
+use loom_core::value::{Number, Object, Value};
 
 use super::{ConfigError, Provider};
 
@@ -86,7 +86,7 @@ impl EnvProvider {
             Err(_) => return,
         };
 
-        use crate::path::FieldSegment;
+        use loom_core::path::FieldSegment;
 
         let segments = path.segments();
         if segments.is_empty() {

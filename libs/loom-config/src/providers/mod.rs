@@ -6,9 +6,9 @@ pub use env_provider::*;
 pub use file_provider::*;
 pub use memory_provider::*;
 
-use crate::Format;
-use crate::path::Path;
-use crate::value::Value;
+use loom_core::Format;
+use loom_core::path::Path;
+use loom_core::value::Value;
 
 use super::ConfigError;
 

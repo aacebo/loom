@@ -1,12 +1,56 @@
 use std::path::PathBuf;
 
-use crate::Format;
-use crate::path::{FilePath, Path};
-use crate::value::Value;
+use loom_core::Format;
+use loom_core::path::{FilePath, Path};
+use loom_core::value::Value;
 
 use super::{ConfigError, Provider};
 
-/// File-based configuration provider
+fn infer_format(path: &std::path::Path) -> Format {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("json") => Format::Json,
+        Some("yaml") | Some("yml") => Format::Yaml,
+        Some("toml") => Format::Toml,
+        _ => Format::Json,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileProviderBuilder {
+    path: PathBuf,
+    format: Option<Format>,
+    optional: bool,
+}
+
+impl FileProviderBuilder {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self {
+            path: path.into(),
+            format: None,
+            optional: false,
+        }
+    }
+
+    pub fn format(mut self, format: Format) -> Self {
+        self.format = Some(format);
+        self
+    }
+
+    pub fn optional(mut self, optional: bool) -> Self {
+        self.optional = optional;
+        self
+    }
+
+    pub fn build(self) -> FileProvider {
+        let format = self.format.unwrap_or_else(|| infer_format(&self.path));
+        FileProvider {
+            path: self.path,
+            format,
+            is_optional: self.optional,
+        }
+    }
+}
+
 pub struct FileProvider {
     path: PathBuf,
     format: Format,
@@ -14,46 +58,38 @@ pub struct FileProvider {
 }
 
 impl FileProvider {
-    pub fn new(path: impl Into<PathBuf>, format: Format, optional: bool) -> Self {
-        Self {
-            path: path.into(),
-            format,
-            is_optional: optional,
-        }
-    }
-
-    #[cfg(feature = "json")]
-    pub fn json(path: impl Into<PathBuf>, optional: bool) -> Self {
-        Self::new(path, Format::Json, optional)
-    }
-
-    #[cfg(feature = "yaml")]
-    pub fn yaml(path: impl Into<PathBuf>, optional: bool) -> Self {
-        Self::new(path, Format::Yaml, optional)
+    pub fn builder(path: impl Into<PathBuf>) -> FileProviderBuilder {
+        FileProviderBuilder::new(path)
     }
 
     fn parse_content(&self, content: &str) -> Result<Value, ConfigError> {
-        match self.format {
-            #[cfg(feature = "json")]
-            Format::Json => {
-                let json: serde_json::Value =
-                    serde_json::from_str(content).map_err(ConfigError::parse)?;
-                Ok(json.into())
-            }
-            #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let docs = saphyr::Yaml::load_from_str(content).map_err(ConfigError::parse)?;
-                if let Some(doc) = docs.into_iter().next() {
-                    Ok(doc.into())
-                } else {
-                    Ok(Value::Null)
-                }
-            }
-            _ => Err(ConfigError::provider(format!(
-                "unsupported format: {:?}",
-                self.format
-            ))),
+        #[cfg(feature = "json")]
+        if self.format == Format::Json {
+            let json: serde_json::Value =
+                serde_json::from_str(content).map_err(ConfigError::parse)?;
+            return Ok(json.into());
         }
+
+        #[cfg(feature = "yaml")]
+        if self.format == Format::Yaml {
+            let docs = saphyr::Yaml::load_from_str(content).map_err(ConfigError::parse)?;
+            if let Some(doc) = docs.into_iter().next() {
+                return Ok(doc.into());
+            } else {
+                return Ok(Value::Null);
+            }
+        }
+
+        #[cfg(feature = "toml")]
+        if self.format == Format::Toml {
+            let toml_value: toml::Value = toml::from_str(content).map_err(ConfigError::parse)?;
+            return Ok(toml_value.into());
+        }
+
+        Err(ConfigError::provider(format!(
+            "unsupported format: {:?}",
+            self.format
+        )))
     }
 }
 
@@ -72,7 +108,7 @@ impl Provider for FileProvider {
         )))
     }
 
-    fn format(&self) -> Option<crate::Format> {
+    fn format(&self) -> Option<Format> {
         Some(self.format)
     }
 
@@ -88,20 +124,81 @@ impl Provider for FileProvider {
     }
 }
 
-#[cfg(all(test, feature = "json"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn test_infer_format_json() {
+        assert_eq!(
+            infer_format(std::path::Path::new("config.json")),
+            Format::Json
+        );
+    }
+
+    #[test]
+    fn test_infer_format_yaml() {
+        assert_eq!(
+            infer_format(std::path::Path::new("config.yaml")),
+            Format::Yaml
+        );
+        assert_eq!(
+            infer_format(std::path::Path::new("config.yml")),
+            Format::Yaml
+        );
+    }
+
+    #[test]
+    fn test_infer_format_toml() {
+        assert_eq!(
+            infer_format(std::path::Path::new("config.toml")),
+            Format::Toml
+        );
+    }
+
+    #[test]
+    fn test_infer_format_default() {
+        assert_eq!(infer_format(std::path::Path::new("config")), Format::Json);
+        assert_eq!(
+            infer_format(std::path::Path::new("config.txt")),
+            Format::Json
+        );
+    }
+
+    #[test]
+    fn test_builder_infers_format() {
+        let provider = FileProvider::builder("config.yaml").build();
+        assert_eq!(provider.format, Format::Yaml);
+    }
+
+    #[test]
+    fn test_builder_override_format() {
+        let provider = FileProvider::builder("config.yaml")
+            .format(Format::Json)
+            .build();
+        assert_eq!(provider.format, Format::Json);
+    }
+
+    #[test]
+    fn test_builder_optional() {
+        let provider = FileProvider::builder("config.json").optional(true).build();
+        assert!(provider.is_optional);
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
     fn test_file_provider_not_found_optional() {
-        let provider = FileProvider::json("/nonexistent/path.json", true);
+        let provider = FileProvider::builder("/nonexistent/path.json")
+            .optional(true)
+            .build();
         let result = provider.load().unwrap();
         assert!(result.is_none());
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn test_file_provider_not_found_required() {
-        let provider = FileProvider::json("/nonexistent/path.json", false);
+        let provider = FileProvider::builder("/nonexistent/path.json").build();
         let result = provider.load().unwrap();
         assert!(result.is_none());
     }

@@ -1,12 +1,10 @@
-use std::path::PathBuf;
-
 use serde::de::DeserializeOwned;
 
-use crate::Format;
-use crate::path::{FieldPath, FieldSegment, Path};
-use crate::value::{Object, Value};
+use loom_core::Format;
+use loom_core::path::{FieldPath, Path};
+use loom_core::value::Value;
 
-use super::{ConfigError, ConfigSection};
+use super::{ConfigBuilder, ConfigError, ConfigSection, Env};
 
 #[derive(Debug, Clone)]
 pub struct ConfigSource {
@@ -16,41 +14,41 @@ pub struct ConfigSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct ConfigRoot {
-    data: Value,
-    sources: Vec<ConfigSource>,
+pub struct Config {
+    pub(crate) env: Env,
+    pub(crate) data: Value,
+    pub(crate) path: Option<Path>,
+    pub(crate) format: Option<Format>,
+    pub(crate) sources: Vec<ConfigSource>,
 }
 
-impl ConfigRoot {
-    pub(crate) fn new(data: Value) -> Self {
-        Self {
-            data,
-            sources: Vec::new(),
-        }
+impl Config {
+    pub fn new() -> ConfigBuilder {
+        ConfigBuilder::new()
     }
 
-    pub(crate) fn with_sources(data: Value, sources: Vec<ConfigSource>) -> Self {
-        Self { data, sources }
+    pub fn env(&self) -> &Env {
+        &self.env
     }
 
     pub fn as_value(&self) -> &Value {
         &self.data
     }
 
-    pub fn as_value_mut(&mut self) -> &mut Value {
-        &mut self.data
-    }
-
     pub fn sources(&self) -> &[ConfigSource] {
         &self.sources
     }
 
-    pub fn get(&self, path: &FieldPath) -> Option<&Value> {
-        self.data.get_by_path(path)
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_ref()
     }
 
-    pub fn get_mut(&mut self, path: &FieldPath) -> Option<&mut Value> {
-        self.data.get_by_path_mut(path)
+    pub fn format(&self) -> Option<Format> {
+        self.format
+    }
+
+    pub fn get(&self, path: &FieldPath) -> Option<&Value> {
+        self.data.get_by_path(path)
     }
 
     pub fn get_str(&self, path: &FieldPath) -> Option<&str> {
@@ -77,54 +75,70 @@ impl ConfigRoot {
         ConfigSection::root(&self.data)
     }
 
-    pub fn set(&mut self, path: &FieldPath, value: Value) {
-        let segments = path.segments();
-        if segments.is_empty() {
-            return;
-        }
-        Self::set_nested(&mut self.data, segments, value);
-    }
+    pub fn merge(self, other: Self) -> Self {
+        let mut data = self.data;
+        data.merge(other.data);
 
-    fn set_nested(current: &mut Value, segments: &[FieldSegment], value: Value) {
-        if segments.is_empty() {
-            return;
-        }
+        let mut sources = self.sources;
+        sources.extend(other.sources);
 
-        let segment = &segments[0];
-        let is_last = segments.len() == 1;
-
-        if let FieldSegment::Key(key) = segment {
-            if let Value::Object(obj) = current {
-                if is_last {
-                    obj.insert(key.clone(), value);
-                } else {
-                    if !obj.contains_key(key) {
-                        obj.insert(key.clone(), Value::Object(Object::new()));
-                    }
-                    if let Some(child) = obj.get_mut(key) {
-                        Self::set_nested(child, &segments[1..], value);
-                    }
-                }
-            }
+        Self {
+            env: self.env,
+            data,
+            path: self.path.or(other.path),
+            format: self.format.or(other.format),
+            sources,
         }
     }
 
-    #[cfg(feature = "json")]
-    pub fn write_json(&self, path: impl Into<PathBuf>) -> Result<(), ConfigError> {
-        let json: serde_json::Value = (&self.data).into();
-        let content = serde_json::to_string_pretty(&json).map_err(ConfigError::parse)?;
-        std::fs::write(path.into(), content)?;
-        Ok(())
+    pub fn write(&self) -> Result<(), ConfigError> {
+        let path = self
+            .path
+            .as_ref()
+            .ok_or_else(|| ConfigError::provider("No primary config file path set"))?;
+        let format = self
+            .format
+            .ok_or_else(|| ConfigError::provider("No primary config file format set"))?;
+
+        self.write_to(path.clone(), format)
     }
 
-    #[cfg(feature = "yaml")]
-    pub fn write_yaml(&self, path: impl Into<PathBuf>) -> Result<(), ConfigError> {
-        let yaml: saphyr::Yaml = (&self.data).into();
-        let mut out = String::new();
-        let mut emitter = saphyr::YamlEmitter::new(&mut out);
-        emitter.dump(&yaml).map_err(|e| ConfigError::parse(e))?;
-        std::fs::write(path.into(), out)?;
-        Ok(())
+    pub fn write_to(&self, path: Path, format: Format) -> Result<(), ConfigError> {
+        let file_path: &std::path::Path = match &path {
+            Path::File(fp) => fp,
+            _ => return Err(ConfigError::provider("Can only write to file paths")),
+        };
+
+        #[cfg(feature = "json")]
+        if format == Format::Json {
+            let json: serde_json::Value = (&self.data).into();
+            let content = serde_json::to_string_pretty(&json).map_err(ConfigError::parse)?;
+            std::fs::write(file_path, content)?;
+            return Ok(());
+        }
+
+        #[cfg(feature = "yaml")]
+        if format == Format::Yaml {
+            let yaml: saphyr::Yaml = (&self.data).into();
+            let mut out = String::new();
+            let mut emitter = saphyr::YamlEmitter::new(&mut out);
+            emitter.dump(&yaml).map_err(ConfigError::parse)?;
+            std::fs::write(file_path, out)?;
+            return Ok(());
+        }
+
+        #[cfg(feature = "toml")]
+        if format == Format::Toml {
+            let toml_value: toml::Value = (&self.data).into();
+            let content = toml::to_string_pretty(&toml_value).map_err(ConfigError::parse)?;
+            std::fs::write(file_path, content)?;
+            return Ok(());
+        }
+
+        Err(ConfigError::provider(format!(
+            "Unsupported format: {:?}",
+            format
+        )))
     }
 
     pub fn bind<T: DeserializeOwned>(&self) -> Result<T, ConfigError> {
@@ -141,18 +155,13 @@ impl ConfigRoot {
     }
 }
 
-impl Default for ConfigRoot {
-    fn default() -> Self {
-        Self::new(Value::Object(Object::new()))
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use super::super::MemoryProvider;
     use super::*;
 
-    fn create_test_config() -> ConfigRoot {
-        use crate::value::Number;
+    fn create_test_config() -> Config {
+        use loom_core::value::{Number, Object};
 
         let mut db = Object::new();
         db.insert("host".to_string(), Value::String("localhost".to_string()));
@@ -178,7 +187,10 @@ mod tests {
         root.insert("servers".to_string(), Value::Array(servers.into()));
         root.insert("debug".to_string(), Value::Bool(true));
 
-        ConfigRoot::new(Value::Object(root))
+        Config::new()
+            .with_provider(MemoryProvider::from_value(Value::Object(root)))
+            .build()
+            .unwrap()
     }
 
     #[test]
@@ -230,21 +242,33 @@ mod tests {
     }
 
     #[test]
-    fn test_set() {
-        let mut config = ConfigRoot::default();
+    fn test_merge() {
+        let config1 = Config::new()
+            .with_provider(MemoryProvider::from_pairs([
+                ("database.host", "localhost"),
+                ("database.port", "5432"),
+            ]))
+            .build()
+            .unwrap();
+
+        let config2 = Config::new()
+            .with_provider(MemoryProvider::from_pairs([
+                ("database.host", "remotehost"),
+                ("logging.level", "debug"),
+            ]))
+            .build()
+            .unwrap();
+
+        let merged = config1.merge(config2);
+
         let path = FieldPath::parse("database.host").unwrap();
-        config.set(&path, Value::String("localhost".to_string()));
+        assert_eq!(merged.get_str(&path), Some("remotehost"));
 
-        assert_eq!(config.get_str(&path), Some("localhost"));
-    }
+        let path = FieldPath::parse("database.port").unwrap();
+        assert_eq!(merged.get_str(&path), Some("5432"));
 
-    #[test]
-    fn test_set_nested() {
-        let mut config = ConfigRoot::default();
-        let path = FieldPath::parse("a.b.c").unwrap();
-        config.set(&path, Value::String("deep".to_string()));
-
-        assert_eq!(config.get_str(&path), Some("deep"));
+        let path = FieldPath::parse("logging.level").unwrap();
+        assert_eq!(merged.get_str(&path), Some("debug"));
     }
 
     #[cfg(feature = "json")]

@@ -10,44 +10,74 @@ use crate::path::Path;
 use crate::{DataSource, Id, ReadError, Record, WriteError};
 
 #[derive(Debug, Clone)]
-pub struct FileSystemSourceOptions {
-    pub path: PathBuf,
+pub struct FileSystemSourceConfig {
+    path: PathBuf,
+    name: String,
 }
 
-impl Default for FileSystemSourceOptions {
-    fn default() -> Self {
+impl FileSystemSourceConfig {
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileSystemSourceBuilder {
+    path: PathBuf,
+    name: Option<String>,
+}
+
+impl FileSystemSourceBuilder {
+    pub fn new() -> Self {
         Self {
             path: PathBuf::from("."),
+            name: None,
+        }
+    }
+
+    pub fn path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.path = path.into();
+        self
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn build(self) -> FileSystemSource {
+        FileSystemSource {
+            config: FileSystemSourceConfig {
+                path: self.path,
+                name: self.name.unwrap_or_else(|| "file_system".to_string()),
+            },
+            cache: RwLock::new(HashMap::new()),
         }
     }
 }
 
-impl FileSystemSourceOptions {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn with_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.path = path.into();
-        self
+impl Default for FileSystemSourceBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 pub struct FileSystemSource {
-    options: FileSystemSourceOptions,
+    config: FileSystemSourceConfig,
     cache: RwLock<HashMap<Id, Record>>,
 }
 
 impl FileSystemSource {
-    pub fn new() -> Self {
-        Self::with_options(FileSystemSourceOptions::default())
+    pub fn builder() -> FileSystemSourceBuilder {
+        FileSystemSourceBuilder::new()
     }
 
-    pub fn with_options(options: FileSystemSourceOptions) -> Self {
-        Self {
-            options,
-            cache: RwLock::new(HashMap::new()),
-        }
+    pub fn config(&self) -> &FileSystemSourceConfig {
+        &self.config
     }
 
     fn full_path(&self, path: &Path) -> Result<PathBuf, ReadError> {
@@ -57,7 +87,7 @@ impl FileSystemSource {
                 if path_buf.is_absolute() {
                     Ok(path_buf.to_path_buf())
                 } else {
-                    Ok(self.options.path.join(path_buf))
+                    Ok(self.config.path.join(path_buf))
                 }
             }
             _ => Err(ReadError::Custom(
@@ -94,14 +124,14 @@ impl FileSystemSource {
 
 impl Default for FileSystemSource {
     fn default() -> Self {
-        Self::new()
+        Self::builder().build()
     }
 }
 
 #[async_trait]
 impl DataSource for FileSystemSource {
     fn name(&self) -> &str {
-        "file_system"
+        &self.config.name
     }
 
     async fn exists(&self, path: &Path) -> Result<bool, ReadError> {
@@ -162,7 +192,7 @@ impl DataSource for FileSystemSource {
             let mut records = Vec::new();
             for file_path in files {
                 let relative = file_path
-                    .strip_prefix(&self.options.path)
+                    .strip_prefix(&self.config.path)
                     .unwrap_or(&file_path);
                 let path = Path::File(crate::path::FilePath::parse(
                     relative.to_str().unwrap_or(""),
@@ -291,8 +321,8 @@ mod tests {
         temp_dir().join("loom_file_system_source_test")
     }
 
-    fn test_options() -> FileSystemSourceOptions {
-        FileSystemSourceOptions::new().with_path(test_dir())
+    fn test_source() -> FileSystemSource {
+        FileSystemSource::builder().path(test_dir()).build()
     }
 
     fn make_record(path: &Path, content: &str) -> Record {
@@ -306,7 +336,7 @@ mod tests {
         let file_path = dir.join("exists_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
 
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
 
         assert!(!ds.exists(&path).await.unwrap());
         std::fs::write(&file_path, "test").unwrap();
@@ -322,7 +352,7 @@ mod tests {
         let file_path = dir.join("find_one_test.txt");
         std::fs::write(&file_path, "hello world").unwrap();
 
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
 
         let record = ds.find_one(&path).await.unwrap();
@@ -335,7 +365,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("create_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
         let record = make_record(&path, "test content");
@@ -352,7 +382,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_duplicate_fails() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("create_dup_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
         let record = make_record(&path, "test");
@@ -368,7 +398,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("update_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
 
@@ -386,7 +416,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_not_found() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("update_not_found.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
         let record = make_record(&path, "test");
@@ -399,7 +429,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsert() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("upsert_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
         let record = make_record(&path, "test");
@@ -417,7 +447,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("delete_test.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
         let record = make_record(&path, "test");
@@ -433,7 +463,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_not_found() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let path = Path::File(FilePath::parse("/nonexistent/file.txt"));
 
         let result = ds.delete(&path).await;
@@ -442,7 +472,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_roundtrip() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let file_path = test_dir().join("roundtrip.txt");
         let path = Path::File(FilePath::parse(file_path.to_str().unwrap()));
 
@@ -460,7 +490,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_one_not_found() {
-        let ds = FileSystemSource::with_options(test_options());
+        let ds = test_source();
         let path = Path::File(FilePath::parse("/nonexistent/file.txt"));
 
         let result = ds.find_one(&path).await;
@@ -469,9 +499,21 @@ mod tests {
     }
 
     #[test]
-    fn test_options_builder() {
-        let options = FileSystemSourceOptions::new().with_path("/custom/path");
+    fn test_builder() {
+        let ds = FileSystemSource::builder()
+            .path("/custom/path")
+            .name("custom_name")
+            .build();
 
-        assert_eq!(options.path, PathBuf::from("/custom/path"));
+        assert_eq!(ds.config().path(), std::path::Path::new("/custom/path"));
+        assert_eq!(ds.config().name(), "custom_name");
+    }
+
+    #[test]
+    fn test_builder_defaults() {
+        let ds = FileSystemSource::builder().build();
+
+        assert_eq!(ds.config().path(), std::path::Path::new("."));
+        assert_eq!(ds.config().name(), "file_system");
     }
 }

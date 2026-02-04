@@ -7,28 +7,92 @@ use crate::path::Path;
 
 use crate::{DataSource, Id, ReadError, Record, WriteError};
 
+#[derive(Debug, Clone)]
+pub struct MemorySourceConfig {
+    name: String,
+}
+
+impl MemorySourceConfig {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MemorySourceBuilder {
+    name: Option<String>,
+    initial_records: Vec<Record>,
+}
+
+impl MemorySourceBuilder {
+    pub fn new() -> Self {
+        Self {
+            name: None,
+            initial_records: Vec::new(),
+        }
+    }
+
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    pub fn with_records(mut self, records: impl IntoIterator<Item = Record>) -> Self {
+        self.initial_records.extend(records);
+        self
+    }
+
+    pub fn with_record(mut self, record: Record) -> Self {
+        self.initial_records.push(record);
+        self
+    }
+
+    pub fn build(self) -> MemorySource {
+        let mut records_map = HashMap::new();
+        for record in self.initial_records {
+            records_map.insert(record.id, record);
+        }
+
+        MemorySource {
+            config: MemorySourceConfig {
+                name: self.name.unwrap_or_else(|| "memory".to_string()),
+            },
+            records: RwLock::new(records_map),
+        }
+    }
+}
+
+impl Default for MemorySourceBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct MemorySource {
+    config: MemorySourceConfig,
     records: RwLock<HashMap<Id, Record>>,
 }
 
 impl MemorySource {
-    pub fn new() -> Self {
-        Self {
-            records: RwLock::new(HashMap::new()),
-        }
+    pub fn builder() -> MemorySourceBuilder {
+        MemorySourceBuilder::new()
+    }
+
+    pub fn config(&self) -> &MemorySourceConfig {
+        &self.config
     }
 }
 
 impl Default for MemorySource {
     fn default() -> Self {
-        Self::new()
+        Self::builder().build()
     }
 }
 
 #[async_trait]
 impl DataSource for MemorySource {
     fn name(&self) -> &str {
-        "memory"
+        &self.config.name
     }
 
     async fn exists(&self, path: &Path) -> Result<bool, ReadError> {
@@ -151,7 +215,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_and_find_one() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -163,7 +227,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_exists() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -174,7 +238,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_count() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path1 = Path::File(FilePath::parse("/test/file1.txt"));
         let path2 = Path::File(FilePath::parse("/test/file2.txt"));
         let path3 = Path::File(FilePath::parse("/other/file.txt"));
@@ -189,7 +253,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_find() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path1 = Path::File(FilePath::parse("/test/file1.txt"));
         let path2 = Path::File(FilePath::parse("/test/file2.txt"));
         let path3 = Path::File(FilePath::parse("/other/file.txt"));
@@ -205,7 +269,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_duplicate_fails() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -216,7 +280,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -226,7 +290,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_not_found() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -236,7 +300,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_upsert() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -249,7 +313,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/test/file.txt"));
         let record = make_record(&path);
 
@@ -262,7 +326,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_not_found() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/nonexistent"));
         let result = ds.delete(&path).await;
         assert!(result.is_err());
@@ -270,10 +334,33 @@ mod tests {
 
     #[tokio::test]
     async fn test_find_one_not_found() {
-        let ds = MemorySource::new();
+        let ds = MemorySource::builder().build();
         let path = Path::File(FilePath::parse("/nonexistent"));
         let result = ds.find_one(&path).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().is_custom());
+    }
+
+    #[test]
+    fn test_builder() {
+        let ds = MemorySource::builder().name("custom_memory").build();
+
+        assert_eq!(ds.config().name(), "custom_memory");
+    }
+
+    #[test]
+    fn test_builder_defaults() {
+        let ds = MemorySource::builder().build();
+        assert_eq!(ds.config().name(), "memory");
+    }
+
+    #[tokio::test]
+    async fn test_builder_with_records() {
+        let path = Path::File(FilePath::parse("/test/file.txt"));
+        let record = make_record(&path);
+
+        let ds = MemorySource::builder().with_record(record).build();
+
+        assert!(ds.exists(&path).await.unwrap());
     }
 }

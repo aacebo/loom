@@ -1,4 +1,4 @@
-use crate::Map;
+use loom_core::Map;
 
 pub struct LayerResult<T> {
     pub meta: Map,
