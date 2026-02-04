@@ -40,3 +40,9 @@ impl std::fmt::Display for Object {
         write!(f, "}}")
     }
 }
+
+impl Default for Object {
+    fn default() -> Self {
+        Self::new()
+    }
+}

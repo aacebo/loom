@@ -16,6 +16,7 @@ default = ["json"]
 int = []
 tokio = ["loom-sync/tokio"]
 json = ["dep:serde_json"]
+yaml = ["dep:saphyr"]
 
 [dependencies]
 async-trait = { workspace = true }
@@ -26,6 +27,7 @@ console = { version = "0.16", features = ["std"] }
 chrono = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
+saphyr = { workspace = true, optional = true }
 
 loom-error = { workspace = true }
 loom-sync = { workspace = true }

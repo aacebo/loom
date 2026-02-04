@@ -50,3 +50,9 @@ impl<T: Into<Value>, const N: usize> From<[T; N]> for Array {
         Self(value.into_iter().map(|v| v.into()).collect())
     }
 }
+
+impl Default for Array {
+    fn default() -> Self {
+        Self::new()
+    }
+}

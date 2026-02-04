@@ -5,6 +5,7 @@ mod layer;
 mod map;
 mod media_type;
 mod options;
+pub mod path;
 pub mod pipe;
 pub mod score;
 pub mod value;

@@ -1,11 +1,32 @@
-use crate::{ETag, Id, MediaType, value::Value};
+use crate::{ETag, Entity, Id, MediaType, path::Path};
 
 #[derive(Debug, Clone, Hash, serde::Deserialize, serde::Serialize)]
 pub struct Document {
     pub id: Id,
     pub etag: ETag,
-    pub mime_type: MediaType,
-    pub content: Value,
+    pub path: Path,
+    pub size: usize,
+    pub media_type: MediaType,
+    pub content: Vec<Entity>,
+}
+
+impl Document {
+    pub fn new(path: Path, media_type: MediaType, content: Vec<Entity>) -> Self {
+        let raw = content
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        Self {
+            id: Id::new(path.to_string().as_str()),
+            etag: ETag::new(media_type, &raw),
+            path,
+            size: raw.len(),
+            media_type,
+            content,
+        }
+    }
 }
 
 impl Eq for Document {}

@@ -27,6 +27,117 @@ impl Value {
             Self::Object(_) => "object",
         }
     }
+
+    // Type checking methods
+
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool(_))
+    }
+
+    pub fn is_number(&self) -> bool {
+        matches!(self, Self::Number(_))
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, Self::String(_))
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_))
+    }
+
+    pub fn is_object(&self) -> bool {
+        matches!(self, Self::Object(_))
+    }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self, Self::Number(Number::Int(_)))
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self, Self::Number(Number::Float(_)))
+    }
+
+    // Value extraction methods
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Self::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Self::Number(Number::Int(v)) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Self::Number(Number::Float(v)) => Some(*v),
+            Self::Number(Number::Int(v)) => Some(*v as f64),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_array(&self) -> Option<&Array> {
+        match self {
+            Self::Array(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_array_mut(&mut self) -> Option<&mut Array> {
+        match self {
+            Self::Array(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_object(&self) -> Option<&Object> {
+        match self {
+            Self::Object(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_object_mut(&mut self) -> Option<&mut Object> {
+        match self {
+            Self::Object(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Self::String(v) => v.len(),
+            Self::Array(v) => v.len(),
+            Self::Object(v) => v.len(),
+            _ => 0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::String(v) => v.is_empty(),
+            Self::Array(v) => v.is_empty(),
+            Self::Object(v) => v.is_empty(),
+            _ => true,
+        }
+    }
 }
 
 impl std::fmt::Display for Value {
@@ -147,5 +258,193 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
 impl<T: Into<Value>, const N: usize> From<[T; N]> for Value {
     fn from(value: [T; N]) -> Self {
         Self::Array(Array::from(value))
+    }
+}
+
+impl Default for Value {
+    fn default() -> Self {
+        Self::Null
+    }
+}
+
+impl std::ops::Index<&str> for Value {
+    type Output = Value;
+
+    fn index(&self, key: &str) -> &Self::Output {
+        static NULL: Value = Value::Null;
+        match self {
+            Self::Object(obj) => obj.get(key).unwrap_or(&NULL),
+            _ => &NULL,
+        }
+    }
+}
+
+impl std::ops::Index<usize> for Value {
+    type Output = Value;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        static NULL: Value = Value::Null;
+        match self {
+            Self::Array(arr) => arr.get(index).unwrap_or(&NULL),
+            _ => &NULL,
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl From<serde_json::Value> for Value {
+    fn from(json: serde_json::Value) -> Self {
+        match json {
+            serde_json::Value::Null => Self::Null,
+            serde_json::Value::Bool(b) => Self::Bool(b),
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    Self::Number(Number::Int(i))
+                } else if let Some(f) = n.as_f64() {
+                    Self::Number(Number::Float(f))
+                } else {
+                    Self::Null
+                }
+            }
+            serde_json::Value::String(s) => Self::String(s),
+            serde_json::Value::Array(arr) => Self::Array(Array::from(
+                arr.into_iter().map(Self::from).collect::<Vec<_>>(),
+            )),
+            serde_json::Value::Object(obj) => {
+                let mut map = Object::new();
+
+                for (k, v) in obj {
+                    map.insert(k, Self::from(v));
+                }
+
+                Self::Object(map)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl From<&Value> for serde_json::Value {
+    fn from(value: &Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Bool(*b),
+            Value::Number(Number::Int(i)) => Self::Number((*i).into()),
+            Value::Number(Number::Float(f)) => serde_json::Number::from_f64(*f)
+                .map(Self::Number)
+                .unwrap_or(Self::Null),
+            Value::String(s) => Self::String(s.clone()),
+            Value::Array(arr) => Self::Array(arr.iter().map(Self::from).collect()),
+            Value::Object(obj) => {
+                let map: serde_json::Map<String, Self> = obj
+                    .iter()
+                    .map(|(k, v)| (k.clone(), Self::from(v)))
+                    .collect();
+                Self::Object(map)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "json")]
+impl From<Value> for serde_json::Value {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Bool(b),
+            Value::Number(Number::Int(i)) => Self::Number(i.into()),
+            Value::Number(Number::Float(f)) => serde_json::Number::from_f64(f)
+                .map(Self::Number)
+                .unwrap_or(Self::Null),
+            Value::String(s) => Self::String(s),
+            Value::Array(arr) => Self::Array(arr.into_iter().map(Self::from).collect()),
+            Value::Object(obj) => {
+                let map: serde_json::Map<String, Self> = obj
+                    .iter()
+                    .map(|(k, v)| (k.clone(), Self::from(v)))
+                    .collect();
+                Self::Object(map)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "yaml")]
+impl From<saphyr::Yaml> for Value {
+    fn from(yaml: saphyr::Yaml) -> Self {
+        match yaml {
+            saphyr::Yaml::Null => Self::Null,
+            saphyr::Yaml::Boolean(b) => Self::Bool(b),
+            saphyr::Yaml::Integer(i) => Self::Number(Number::Int(i)),
+            saphyr::Yaml::Real(s) => {
+                if let Ok(f) = s.parse::<f64>() {
+                    Self::Number(Number::Float(f))
+                } else {
+                    Self::String(s)
+                }
+            }
+            saphyr::Yaml::String(s) => Self::String(s),
+            saphyr::Yaml::Array(arr) => Self::Array(Array::from(
+                arr.into_iter().map(Self::from).collect::<Vec<_>>(),
+            )),
+            saphyr::Yaml::Hash(hash) => {
+                let mut map = Object::new();
+                for (k, v) in hash {
+                    let key = match k {
+                        saphyr::Yaml::String(s) => s,
+                        saphyr::Yaml::Integer(i) => i.to_string(),
+                        saphyr::Yaml::Real(s) => s,
+                        saphyr::Yaml::Boolean(b) => b.to_string(),
+                        _ => continue,
+                    };
+                    map.insert(key, Self::from(v));
+                }
+                Self::Object(map)
+            }
+            saphyr::Yaml::Alias(_) => Self::Null,
+            saphyr::Yaml::BadValue => Self::Null,
+        }
+    }
+}
+
+#[cfg(feature = "yaml")]
+impl From<&Value> for saphyr::Yaml {
+    fn from(value: &Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Boolean(*b),
+            Value::Number(Number::Int(i)) => Self::Integer(*i),
+            Value::Number(Number::Float(f)) => Self::Real(f.to_string()),
+            Value::String(s) => Self::String(s.clone()),
+            Value::Array(arr) => Self::Array(arr.iter().map(Self::from).collect()),
+            Value::Object(obj) => {
+                let hash: saphyr::Hash = obj
+                    .iter()
+                    .map(|(k, v)| (Self::String(k.clone()), Self::from(v)))
+                    .collect();
+                Self::Hash(hash)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "yaml")]
+impl From<Value> for saphyr::Yaml {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Boolean(b),
+            Value::Number(Number::Int(i)) => Self::Integer(i),
+            Value::Number(Number::Float(f)) => Self::Real(f.to_string()),
+            Value::String(s) => Self::String(s),
+            Value::Array(arr) => Self::Array(arr.into_iter().map(Self::from).collect()),
+            Value::Object(obj) => {
+                let hash: saphyr::Hash = obj
+                    .iter()
+                    .map(|(k, v)| (Self::String(k.clone()), Self::from(v)))
+                    .collect();
+                Self::Hash(hash)
+            }
+        }
     }
 }
