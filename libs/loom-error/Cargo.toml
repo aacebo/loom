@@ -1,6 +1,5 @@
 [package]
-name = "events"
-publish = false
+name = "loom-error"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,10 +12,3 @@ repository.workspace = true
 doctest = false
 
 [dependencies]
-lapin = "2"
-futures-lite = "2"
-chrono = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-uuid = { workspace = true }
-loom-error = { workspace = true }

@@ -1,6 +1,6 @@
 # 6. Research
 
-Research documentation for the MERC system.
+Research documentation for the LOOM system.
 
 <pre>
 ├── <a href="../README.md">..</a>
@@ -10,7 +10,7 @@ Research documentation for the MERC system.
 ├── <a href="./4.recall.md">▸ 4. Recall</a>
 ├── <a href="./5.classification.md">▸ 5. Classification</a>
 └── <span><a href="./README.md"><b>▾ 6. Research/</b></a> 👈</span>
-    ├── <a href="./merc/README.md">▸ 6.1 Merc/</a>
+    ├── <a href="./loom/README.md">▸ 6.1 Loom/</a>
     ├── <a href="./reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="./analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>
@@ -43,22 +43,22 @@ flowchart LR
 
 ---
 
-## What is MERC?
+## What is LOOM?
 
-MERC is a **write-time memory gating** system that decides whether text is worth storing as a memory. It uses:
+LOOM is a **write-time memory gating** system that decides whether text is worth storing as a memory. It uses:
 
 - **Zero-shot classification** with BART-large-MNLI for label scoring
 - **26 labels** across 4 categories (Sentiment, Emotion, Outcome, Context)
 - **Weighted scoring** to prioritize memory-bearing content
 - **Negative filters** to reject small talk and filler
 
-### What MERC Does
+### What LOOM Does
 
 - Scores text for memory worthiness (accept/reject)
 - Provides label breakdown and confidence scores
 - Filters out noise (greetings, acknowledgments, filler)
 
-### What MERC Doesn't Do
+### What LOOM Doesn't Do
 
 - Store memories (downstream systems handle storage)
 - Retrieve memories (stateless scoring only)
@@ -88,16 +88,16 @@ MERC is a **write-time memory gating** system that decides whether text is worth
 - [4. Recall](./4.recall.md) — Retrieval and reinforcement
 - [5. Classification](./5.classification.md) — Memory type mapping
 
-### Merc Engine
+### Loom Engine
 
-- [Scoring Algorithm](./merc/scoring-algorithm.md) — How Merc scores text
-- [Improvement Roadmap](./merc/roadmap/) — Phased improvements (MERC-001 through MERC-014)
+- [Scoring Algorithm](./loom/scoring-algorithm.md) — How Loom scores text
+- [Improvement Roadmap](./loom/roadmap/) — Phased improvements (LOOM-001 through LOOM-014)
 
 ### Analysis
 
-- [Merc vs Hindsight](./analysis/1.merc-vs-hindsight.md) — Write-time vs store-everything comparison
-- [Merc vs Zep](./analysis/2.merc-vs-zep.md) — Comparison with graph-based memory
-- [Merc vs Enterprise](./analysis/3.merc-vs-enterprise.md) — Comparison with enterprise model
+- [Loom vs Hindsight](./analysis/1.loom-vs-hindsight.md) — Write-time vs store-everything comparison
+- [Loom vs Zep](./analysis/2.loom-vs-zep.md) — Comparison with graph-based memory
+- [Loom vs Enterprise](./analysis/3.loom-vs-enterprise.md) — Comparison with enterprise model
 
 ### Reference
 

@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to run migrations");
 
     let amqp = events::new(&config.rabbitmq_url)
-        .with_app_id("merc[api]")
+        .with_app_id("loom[api]")
         .with_queue(Key::memory(MemoryAction::Create))
         .with_queue(Key::memory(MemoryAction::Update))
         .connect()

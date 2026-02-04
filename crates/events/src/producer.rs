@@ -1,5 +1,5 @@
 use lapin::{options, protocol};
-use merc_error::Result;
+use loom_error::Result;
 
 use crate::{Event, Socket};
 

@@ -8,16 +8,16 @@ version = "0.0.1"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
-documentation = "https://www.github.com/aacebo/merc"
-homepage = "https://www.github.com/aacebo/merc"
-repository = "https://www.github.com/aacebo/merc"
+documentation = "https://www.github.com/aacebo/loom"
+homepage = "https://www.github.com/aacebo/loom"
+repository = "https://www.github.com/aacebo/loom"
 
 [workspace.dependencies]
 # libs (public)
-merc = { path = "./libs/merc", version = "0.0.1" }
-merc-sync = { path = "./libs/merc-sync", version = "0.0.1" }
-merc-error = { path = "./libs/merc-error", version = "0.0.1" }
-merc-runtime = { path = "./libs/merc-runtime", version = "0.0.1" }
+loom = { path = "./libs/loom", version = "0.0.1" }
+loom-sync = { path = "./libs/loom-sync", version = "0.0.1" }
+loom-error = { path = "./libs/loom-error", version = "0.0.1" }
+loom-runtime = { path = "./libs/loom-runtime", version = "0.0.1" }
 
 # crates (private)
 events = { path = "./crates/events", version = "0.0.1" }

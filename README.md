@@ -1,6 +1,6 @@
-# MERC
+# LOOM
 
-**Memory Extraction, Retrieval, and Classification**
+**Layer-Oriented Orchestration Machine**
 
 This projects goal is to design a memory management system modeled after the human brain (or at least what we know of it thus far).
 
@@ -12,7 +12,7 @@ This projects goal is to design a memory management system modeled after the hum
 ├── <a href="./docs/4.recall.md">▸ 4. Recall</a>
 ├── <a href="./docs/5.classification.md">▸ 5. Classification</a>
 └── <a href="./docs/README.md">▾ 6. Research/</a>
-    ├── <a href="./docs/merc/README.md">▸ 6.1 Merc/</a>
+    ├── <a href="./docs/loom/README.md">▸ 6.1 Loom/</a>
     ├── <a href="./docs/reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="./docs/analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>

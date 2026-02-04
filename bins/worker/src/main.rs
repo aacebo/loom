@@ -5,10 +5,10 @@ use events::{Key, MemoryAction};
 use config::Config;
 
 #[tokio::main]
-async fn main() -> Result<(), merc::error::Error> {
+async fn main() -> Result<(), loom::error::Error> {
     let config = Config::from_env();
     let socket = events::new(&config.rabbitmq_url)
-        .with_app_id("merc[worker]")
+        .with_app_id("loom[worker]")
         .with_queue(Key::memory(MemoryAction::Create))
         .connect()
         .await?;

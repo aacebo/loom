@@ -1,0 +1,23 @@
+[package]
+name = "loom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+doctest = false
+
+[features]
+error = ["dep:loom-error"]
+runtime = ["dep:loom-runtime"]
+sync = ["dep:loom-sync"]
+tokio = ["loom-sync/tokio"]
+
+[dependencies]
+loom-error = { workspace = true, optional = true }
+loom-runtime = { workspace = true, optional = true }
+loom-sync = { workspace = true, optional = true }

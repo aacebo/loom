@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use lapin::{Channel, Connection, ConnectionProperties, options, types};
-use merc_error::{Error, Result};
+use loom_error::{Error, Result};
 
 use crate::{Key, SocketConsumer, SocketProducer};
 

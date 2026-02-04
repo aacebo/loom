@@ -1,5 +1,5 @@
 use futures_lite::StreamExt;
-use merc_error::Result;
+use loom_error::Result;
 
 use crate::{Event, Socket};
 

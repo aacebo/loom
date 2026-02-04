@@ -1,6 +1,5 @@
 [package]
-name = "events"
-publish = false
+name = "loom-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,14 +8,12 @@ documentation.workspace = true
 homepage.workspace = true
 repository.workspace = true
 
-[lib]
-doctest = false
+[[bin]]
+name = "loom"
+path = "src/main.rs"
 
 [dependencies]
-lapin = "2"
-futures-lite = "2"
-chrono = { workspace = true }
+clap = { version = "4", features = ["derive"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
-loom-error = { workspace = true }
+loom-runtime = { workspace = true }

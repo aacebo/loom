@@ -1,6 +1,6 @@
 # 6.2 Reference
 
-Research documentation on external memory systems that inform Merc's design.
+Research documentation on external memory systems that inform Loom's design.
 
 <pre>
 ├── <a href="../README.md">..</a>
@@ -10,7 +10,7 @@ Research documentation on external memory systems that inform Merc's design.
 ├── <a href="../4.recall.md">▸ 4. Recall</a>
 ├── <a href="../5.classification.md">▸ 5. Classification</a>
 └── <a href="../README.md">▾ 6. Research/</a>
-    ├── <a href="../merc/README.md">▸ 6.1 Merc/</a>
+    ├── <a href="../loom/README.md">▸ 6.1 Loom/</a>
     ├── <span><a href="./README.md"><b>▾ 6.2 Reference/</b></a> 👈</span>
     │   ├── <a href="./1.hindsight.md">6.2.1 Hindsight</a> — Biomimetic agent memory
     │   ├── <a href="./2.zep.md">6.2.2 Zep</a> — Knowledge graph memory
@@ -37,7 +37,7 @@ These documents analyze external memory systems to understand different approach
 Understanding external systems helps:
 1. **Identify patterns** — Common approaches to memory challenges
 2. **Avoid pitfalls** — Learn from others' design decisions
-3. **Find gaps** — Opportunities for Merc to differentiate
+3. **Find gaps** — Opportunities for Loom to differentiate
 4. **Inform design** — Borrow proven concepts where appropriate
 
-See [analysis/](../analysis/) for direct comparisons with Merc.
+See [analysis/](../analysis/) for direct comparisons with Loom.
