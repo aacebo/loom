@@ -1,10 +1,10 @@
 mod error;
-mod field;
 mod file;
+mod ident;
 mod uri;
 
-pub use field::*;
 pub use file::*;
+pub use ident::*;
 pub use uri::*;
 
 /// Creates a `Path` from a string literal.
@@ -34,7 +34,7 @@ macro_rules! path {
     };
     (field $path:expr) => {
         $crate::path::Path::Field(
-            $crate::path::FieldPath::parse($path).expect("invalid field path"),
+            $crate::path::IdentPath::parse($path).expect("invalid field path"),
         )
     };
 }
@@ -43,7 +43,7 @@ macro_rules! path {
 pub enum Path {
     File(FilePath),
     Uri(UriPath),
-    Field(FieldPath),
+    Field(IdentPath),
 }
 
 impl Path {
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_path_is_field() {
-        let path = Path::Field(FieldPath::parse("object.field").unwrap());
+        let path = Path::Field(IdentPath::parse("object.field").unwrap());
         assert!(!path.is_file());
         assert!(!path.is_uri());
         assert!(path.is_field());
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_path_display_field() {
-        let path = Path::Field(FieldPath::parse("object.field[0]").unwrap());
+        let path = Path::Field(IdentPath::parse("object.field[0]").unwrap());
         assert_eq!(path.to_string(), "object.field[0]");
     }
 }

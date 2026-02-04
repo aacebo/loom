@@ -1,15 +1,15 @@
-use crate::{Id, path::FieldPath, value::Value};
+use crate::{Id, path::IdentPath, value::Value};
 
 #[derive(Debug, Clone, Hash, serde::Deserialize, serde::Serialize)]
 pub struct Entity {
     pub id: Id,
-    pub path: FieldPath,
+    pub path: IdentPath,
     pub otype: String,
     pub content: Value,
 }
 
 impl Entity {
-    pub fn new(path: FieldPath, otype: &str, content: Value) -> Self {
+    pub fn new(path: IdentPath, otype: &str, content: Value) -> Self {
         Self {
             id: Id::new(path.to_string().as_str()),
             path,

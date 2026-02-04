@@ -1,4 +1,6 @@
-use crate::{ETag, Id, MediaType, path::Path};
+use loom_core::Id;
+
+use crate::{ETag, MediaType, path::Path};
 
 #[derive(Debug, Clone, Hash, serde::Deserialize, serde::Serialize)]
 pub struct Record {

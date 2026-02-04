@@ -1,6 +1,6 @@
 use saphyr::{Yaml, YamlEmitter};
 
-use crate::path::FieldPath;
+use crate::path::IdentPath;
 use crate::value::Value;
 use crate::{Document, Entity, Format, Record};
 
@@ -31,7 +31,7 @@ impl Codec for YamlCodec {
         let value = Value::from(yaml);
 
         let entity = Entity::new(
-            FieldPath::parse("root").expect("valid field path"),
+            IdentPath::parse("root").expect("valid field path"),
             record.media_type.as_mime_str(),
             value,
         );
@@ -94,7 +94,7 @@ mod tests {
         let mut obj = Object::new();
         obj.insert("key".to_string(), Value::String("value".to_string()));
         let entity = Entity::new(
-            FieldPath::parse("root").unwrap(),
+            IdentPath::parse("root").unwrap(),
             "application/yaml",
             Value::Object(obj),
         );

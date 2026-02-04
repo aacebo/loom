@@ -2191,6 +2191,7 @@ dependencies = [
 name = "loom-core"
 version = "0.0.1"
 dependencies = [
+ "blake3",
  "saphyr",
  "serde",
  "serde_json",

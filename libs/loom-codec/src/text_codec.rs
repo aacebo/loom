@@ -1,4 +1,4 @@
-use crate::path::FieldPath;
+use crate::path::IdentPath;
 use crate::value::Value;
 use crate::{Document, Entity, Format, Record};
 
@@ -25,7 +25,7 @@ impl Codec for TextCodec {
 
         let text = String::from_utf8(record.content)?;
         let entity = Entity::new(
-            FieldPath::parse("root").expect("valid field path"),
+            IdentPath::parse("root").expect("valid field path"),
             record.media_type.as_mime_str(),
             Value::String(text),
         );
@@ -76,7 +76,7 @@ mod tests {
         let codec = TextCodec::new();
         let path = Path::File(FilePath::parse("/test.txt"));
         let entity = Entity::new(
-            FieldPath::parse("root").unwrap(),
+            IdentPath::parse("root").unwrap(),
             "text/plain",
             Value::String("hello world".to_string()),
         );

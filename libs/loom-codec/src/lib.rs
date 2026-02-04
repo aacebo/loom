@@ -1,4 +1,5 @@
 mod error;
+mod registry;
 
 #[cfg(feature = "json")]
 mod json_codec;
@@ -12,6 +13,7 @@ mod toml_codec;
 mod text_codec;
 
 pub use error::*;
+pub use registry::*;
 
 #[cfg(feature = "json")]
 pub use json_codec::*;

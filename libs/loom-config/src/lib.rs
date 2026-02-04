@@ -15,27 +15,27 @@ pub use section::*;
 #[macro_export]
 macro_rules! get {
     ($config:expr, $path:expr) => {{
-        ::loom_core::path::FieldPath::parse($path)
+        ::loom_core::path::IdentPath::parse($path)
             .ok()
             .and_then(|p| $config.get_str(&p))
     }};
     ($config:expr, $path:expr, int) => {{
-        ::loom_core::path::FieldPath::parse($path)
+        ::loom_core::path::IdentPath::parse($path)
             .ok()
             .and_then(|p| $config.get_int(&p))
     }};
     ($config:expr, $path:expr, float) => {{
-        ::loom_core::path::FieldPath::parse($path)
+        ::loom_core::path::IdentPath::parse($path)
             .ok()
             .and_then(|p| $config.get_float(&p))
     }};
     ($config:expr, $path:expr, bool) => {{
-        ::loom_core::path::FieldPath::parse($path)
+        ::loom_core::path::IdentPath::parse($path)
             .ok()
             .and_then(|p| $config.get_bool(&p))
     }};
     ($config:expr, $path:expr, value) => {{
-        ::loom_core::path::FieldPath::parse($path)
+        ::loom_core::path::IdentPath::parse($path)
             .ok()
             .and_then(|p| $config.get(&p))
     }};

@@ -1,61 +1,61 @@
 use serde::de::DeserializeOwned;
 
-use loom_core::path::{FieldPath, FieldSegment};
+use loom_core::path::{IdentPath, IdentSegment};
 use loom_core::value::Value;
 
 use super::ConfigError;
 
-#[derive(Debug, Clone)]
-pub struct ConfigSection<'a> {
-    value: Option<&'a Value>,
-    path: FieldPath,
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+pub struct ConfigSection {
+    value: Value,
+    path: IdentPath,
 }
 
-impl<'a> ConfigSection<'a> {
-    pub(crate) fn new(value: Option<&'a Value>, path: FieldPath) -> Self {
+impl ConfigSection {
+    pub(crate) fn new(value: Value, path: IdentPath) -> Self {
         Self { value, path }
     }
 
-    pub(crate) fn root(value: &'a Value) -> Self {
+    pub(crate) fn root(value: Value) -> Self {
         Self {
-            value: Some(value),
-            path: FieldPath::parse("root").expect("valid path"),
+            value,
+            path: IdentPath::parse("root").expect("valid path"),
         }
     }
 
-    pub fn path(&self) -> &FieldPath {
+    pub fn path(&self) -> &IdentPath {
         &self.path
     }
 
     pub fn exists(&self) -> bool {
-        self.value.is_some()
+        !self.value.is_null()
     }
 
-    pub fn value(&self) -> Option<&'a Value> {
-        self.value
+    pub fn value(&self) -> &Value {
+        &self.value
     }
 
     pub fn is_object(&self) -> bool {
-        self.value.map(|v| v.is_object()).unwrap_or(false)
+        self.value.is_object()
     }
 
     pub fn is_array(&self) -> bool {
-        self.value.map(|v| v.is_array()).unwrap_or(false)
+        self.value.is_array()
     }
 
-    pub fn get(&self, path: &FieldPath) -> Option<&'a Value> {
-        self.value?.get_by_path(path)
+    pub fn get(&self, path: &IdentPath) -> Option<&Value> {
+        self.value.get_by_path(path)
     }
 
-    pub fn get_section(&self, key: &str) -> ConfigSection<'a> {
-        let child_value = self.value.and_then(|v| match v {
-            Value::Object(obj) => obj.get(key),
-            _ => None,
-        });
+    pub fn get_section(&self, key: &str) -> ConfigSection {
+        let child_value = match &self.value {
+            Value::Object(obj) => obj.get(key).unwrap_or(&Value::Null).clone(),
+            _ => Value::Null,
+        };
 
         // Build child path
-        let mut segments: Vec<FieldSegment> = self.path.segments().to_vec();
-        segments.push(FieldSegment::Key(key.to_string()));
+        let mut segments: Vec<IdentSegment> = self.path.segments().to_vec();
+        segments.push(IdentSegment::Key(key.to_string()));
 
         // Create a simple path string and parse it
         let child_path_str = if self.path.to_string() == "root" {
@@ -64,16 +64,16 @@ impl<'a> ConfigSection<'a> {
             format!("{}.{}", self.path, key)
         };
 
-        let child_path = FieldPath::parse(&child_path_str).unwrap_or(self.path.clone());
+        let child_path = IdentPath::parse(&child_path_str).unwrap_or(self.path.clone());
 
         ConfigSection::new(child_value, child_path)
     }
 
-    pub fn get_index(&self, index: usize) -> ConfigSection<'a> {
-        let child_value = self.value.and_then(|v| match v {
-            Value::Array(arr) => arr.get(index),
-            _ => None,
-        });
+    pub fn get_index(&self, index: usize) -> ConfigSection {
+        let child_value = match &self.value {
+            Value::Array(arr) => arr.get(index).cloned().unwrap_or(Value::Null),
+            _ => Value::Null,
+        };
 
         let child_path_str = if self.path.to_string() == "root" {
             format!("[{}]", index)
@@ -81,42 +81,38 @@ impl<'a> ConfigSection<'a> {
             format!("{}[{}]", self.path, index)
         };
 
-        let child_path = FieldPath::parse(&child_path_str).unwrap_or(self.path.clone());
+        let child_path = IdentPath::parse(&child_path_str).unwrap_or(self.path.clone());
 
         ConfigSection::new(child_value, child_path)
     }
 
     pub fn bind<T: DeserializeOwned>(&self) -> Result<T, ConfigError> {
-        let value = self
-            .value
-            .ok_or_else(|| ConfigError::not_found(self.path.to_string()))?;
+        if self.value.is_null() {
+            return Err(ConfigError::not_found(self.path.to_string()));
+        }
 
-        let json: serde_json::Value = value.into();
+        let json: serde_json::Value = (&self.value).into();
         serde_json::from_value(json).map_err(ConfigError::deserialize)
     }
 
-    pub fn keys(&self) -> Option<impl Iterator<Item = &'a str>> {
-        match self.value? {
+    pub fn keys(&self) -> Option<impl Iterator<Item = &str>> {
+        match &self.value {
             Value::Object(obj) => Some(obj.keys().map(|s| s.as_str())),
             _ => None,
         }
     }
 
-    pub fn len(&self) -> Option<usize> {
-        match self.value? {
-            Value::Array(arr) => Some(arr.len()),
-            Value::Object(obj) => Some(obj.len()),
-            _ => None,
-        }
+    pub fn len(&self) -> usize {
+        self.value.len()
     }
 
-    pub fn is_empty(&self) -> Option<bool> {
-        self.len().map(|l| l == 0)
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
     }
 
-    pub fn children(&self) -> Vec<ConfigSection<'a>> {
-        match self.value {
-            Some(Value::Object(obj)) => obj
+    pub fn children(&self) -> Vec<ConfigSection> {
+        match &self.value {
+            Value::Object(obj) => obj
                 .iter()
                 .map(|(k, v)| {
                     let child_path_str = if self.path.to_string() == "root" {
@@ -124,11 +120,11 @@ impl<'a> ConfigSection<'a> {
                     } else {
                         format!("{}.{}", self.path, k)
                     };
-                    let child_path = FieldPath::parse(&child_path_str).unwrap_or(self.path.clone());
-                    ConfigSection::new(Some(v), child_path)
+                    let child_path = IdentPath::parse(&child_path_str).unwrap_or(self.path.clone());
+                    ConfigSection::new(v.clone(), child_path)
                 })
                 .collect(),
-            Some(Value::Array(arr)) => arr
+            Value::Array(arr) => arr
                 .iter()
                 .enumerate()
                 .map(|(i, v)| {
@@ -137,8 +133,8 @@ impl<'a> ConfigSection<'a> {
                     } else {
                         format!("{}[{}]", self.path, i)
                     };
-                    let child_path = FieldPath::parse(&child_path_str).unwrap_or(self.path.clone());
-                    ConfigSection::new(Some(v), child_path)
+                    let child_path = IdentPath::parse(&child_path_str).unwrap_or(self.path.clone());
+                    ConfigSection::new(v.clone(), child_path)
                 })
                 .collect(),
             _ => Vec::new(),
@@ -181,7 +177,7 @@ mod tests {
     #[test]
     fn test_section_exists() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
 
         assert!(section.exists());
         assert!(section.get_section("database").exists());
@@ -191,7 +187,7 @@ mod tests {
     #[test]
     fn test_section_is_object() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
 
         assert!(section.is_object());
         assert!(section.get_section("database").is_object());
@@ -201,7 +197,7 @@ mod tests {
     #[test]
     fn test_section_is_array() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
 
         assert!(!section.is_array());
         assert!(section.get_section("servers").is_array());
@@ -210,21 +206,21 @@ mod tests {
     #[test]
     fn test_section_get_index() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
         let servers = section.get_section("servers");
 
         let first = servers.get_index(0);
         assert!(first.exists());
         assert!(first.is_object());
 
-        let path = FieldPath::parse("name").unwrap();
+        let path = IdentPath::parse("name").unwrap();
         assert_eq!(first.get(&path).unwrap().as_str(), Some("primary"));
     }
 
     #[test]
     fn test_section_keys() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
         let db = section.get_section("database");
 
         let keys: Vec<_> = db.keys().unwrap().collect();
@@ -235,16 +231,16 @@ mod tests {
     #[test]
     fn test_section_len() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
 
-        assert_eq!(section.get_section("servers").len(), Some(2));
-        assert_eq!(section.get_section("database").len(), Some(2));
+        assert_eq!(section.get_section("servers").len(), 2);
+        assert_eq!(section.get_section("database").len(), 2);
     }
 
     #[test]
     fn test_section_children() {
         let config = create_test_config();
-        let section = ConfigSection::root(&config);
+        let section = ConfigSection::root(config);
         let servers = section.get_section("servers");
 
         let children = servers.children();

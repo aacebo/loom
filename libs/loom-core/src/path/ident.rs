@@ -1,27 +1,27 @@
-pub use super::error::FieldPathError;
+pub use super::error::IdentPathError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-pub struct FieldPath(Vec<FieldSegment>);
+pub struct IdentPath(Vec<IdentSegment>);
 
-impl FieldPath {
-    pub fn parse(input: &str) -> Result<Self, FieldPathError> {
+impl IdentPath {
+    pub fn parse(input: &str) -> Result<Self, IdentPathError> {
         let s = input.trim();
 
         if s.is_empty() {
-            return Err(FieldPathError::Empty);
+            return Err(IdentPathError::Empty);
         }
 
         let mut segments = Vec::new();
         let mut chars = s.chars().peekable();
         let mut first = true;
 
-        while let Some(segment) = FieldSegment::parse_next(&mut chars, !first)? {
+        while let Some(segment) = IdentSegment::parse_next(&mut chars, !first)? {
             segments.push(segment);
             first = false;
         }
 
         if segments.is_empty() {
-            return Err(FieldPathError::Empty);
+            return Err(IdentPathError::Empty);
         }
 
         Ok(Self(segments))
@@ -35,18 +35,18 @@ impl FieldPath {
         self.0.is_empty()
     }
 
-    pub fn segments(&self) -> &[FieldSegment] {
+    pub fn segments(&self) -> &[IdentSegment] {
         &self.0
     }
 }
 
-impl std::fmt::Display for FieldPath {
+impl std::fmt::Display for IdentPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, segment) in self.0.iter().enumerate() {
             match segment {
-                FieldSegment::Key(v) if i == 0 => write!(f, "{}", v)?,
-                FieldSegment::Key(v) => write!(f, ".{}", v)?,
-                FieldSegment::Index(v) => write!(f, "[{}]", v)?,
+                IdentSegment::Key(v) if i == 0 => write!(f, "{}", v)?,
+                IdentSegment::Key(v) => write!(f, ".{}", v)?,
+                IdentSegment::Index(v) => write!(f, "[{}]", v)?,
             }
         }
 
@@ -55,47 +55,47 @@ impl std::fmt::Display for FieldPath {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
-pub enum FieldSegment {
+pub enum IdentSegment {
     Key(String),
     Index(usize),
 }
 
-impl FieldSegment {
+impl IdentSegment {
     fn parse_next(
         chars: &mut std::iter::Peekable<std::str::Chars>,
         expect_separator: bool,
-    ) -> Result<Option<Self>, FieldPathError> {
+    ) -> Result<Option<Self>, IdentPathError> {
         if expect_separator {
             match chars.peek() {
                 None => return Ok(None),
                 Some(&'.') => {
                     chars.next();
                     if chars.peek().is_none() {
-                        return Err(FieldPathError::EmptySegment);
+                        return Err(IdentPathError::EmptySegment);
                     }
                 }
                 Some(&'[') => {}
-                Some(&']') => return Err(FieldPathError::UnmatchedBracket),
-                Some(_) => return Err(FieldPathError::EmptySegment),
+                Some(&']') => return Err(IdentPathError::UnmatchedBracket),
+                Some(_) => return Err(IdentPathError::EmptySegment),
             }
         }
 
         match chars.peek() {
             None => Ok(None),
-            Some(&'.') => Err(FieldPathError::EmptySegment),
+            Some(&'.') => Err(IdentPathError::EmptySegment),
             Some(&'[') => Self::parse_index(chars).map(Some),
-            Some(&']') => Err(FieldPathError::UnmatchedBracket),
+            Some(&']') => Err(IdentPathError::UnmatchedBracket),
             Some(_) => Self::parse_key(chars).map(Some),
         }
     }
 
-    fn parse_key(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Self, FieldPathError> {
+    fn parse_key(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Self, IdentPathError> {
         let mut key = String::new();
 
         while let Some(&c) = chars.peek() {
             match c {
                 '.' | '[' => break,
-                ']' => return Err(FieldPathError::UnmatchedBracket),
+                ']' => return Err(IdentPathError::UnmatchedBracket),
                 _ => {
                     key.push(c);
                     chars.next();
@@ -104,7 +104,7 @@ impl FieldSegment {
         }
 
         if key.is_empty() {
-            return Err(FieldPathError::EmptySegment);
+            return Err(IdentPathError::EmptySegment);
         }
 
         Ok(Self::Key(key))
@@ -112,7 +112,7 @@ impl FieldSegment {
 
     fn parse_index(
         chars: &mut std::iter::Peekable<std::str::Chars>,
-    ) -> Result<Self, FieldPathError> {
+    ) -> Result<Self, IdentPathError> {
         chars.next(); // consume '['
 
         let mut index = String::new();
@@ -121,20 +121,20 @@ impl FieldSegment {
             match chars.next() {
                 Some(']') => break,
                 Some(c) => index.push(c),
-                None => return Err(FieldPathError::UnmatchedBracket),
+                None => return Err(IdentPathError::UnmatchedBracket),
             }
         }
 
         if index.is_empty() {
-            return Err(FieldPathError::EmptyBracket);
+            return Err(IdentPathError::EmptyBracket);
         }
 
-        let value = index.parse().map_err(|_| FieldPathError::InvalidIndex)?;
+        let value = index.parse().map_err(|_| IdentPathError::InvalidIndex)?;
         Ok(Self::Index(value))
     }
 }
 
-impl std::fmt::Display for FieldSegment {
+impl std::fmt::Display for IdentSegment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Key(v) => write!(f, ".{}", v),
@@ -149,86 +149,86 @@ mod tests {
 
     #[test]
     fn test_parse_simple_key() {
-        let path = FieldPath::parse("object").unwrap();
+        let path = IdentPath::parse("object").unwrap();
         assert_eq!(path.to_string(), "object");
     }
 
     #[test]
     fn test_parse_dotted_path() {
-        let path = FieldPath::parse("object.field").unwrap();
+        let path = IdentPath::parse("object.field").unwrap();
         assert_eq!(path.to_string(), "object.field");
     }
 
     #[test]
     fn test_parse_index() {
-        let path = FieldPath::parse("arr[0]").unwrap();
+        let path = IdentPath::parse("arr[0]").unwrap();
         assert_eq!(path.to_string(), "arr[0]");
     }
 
     #[test]
     fn test_parse_complex() {
-        let path = FieldPath::parse("object.field[2].test").unwrap();
+        let path = IdentPath::parse("object.field[2].test").unwrap();
         assert_eq!(path.to_string(), "object.field[2].test");
     }
 
     #[test]
     fn test_parse_consecutive_indices() {
-        let path = FieldPath::parse("arr[0][1]").unwrap();
+        let path = IdentPath::parse("arr[0][1]").unwrap();
         assert_eq!(path.to_string(), "arr[0][1]");
     }
 
     #[test]
     fn test_parse_index_after_dot() {
-        let path = FieldPath::parse("a[0].b").unwrap();
+        let path = IdentPath::parse("a[0].b").unwrap();
         assert_eq!(path.to_string(), "a[0].b");
     }
 
     #[test]
     fn test_parse_empty_error() {
-        let err = FieldPath::parse("").unwrap_err();
-        assert_eq!(err, FieldPathError::Empty);
+        let err = IdentPath::parse("").unwrap_err();
+        assert_eq!(err, IdentPathError::Empty);
     }
 
     #[test]
     fn test_parse_empty_segment_error() {
-        let err = FieldPath::parse("a..b").unwrap_err();
-        assert_eq!(err, FieldPathError::EmptySegment);
+        let err = IdentPath::parse("a..b").unwrap_err();
+        assert_eq!(err, IdentPathError::EmptySegment);
     }
 
     #[test]
     fn test_parse_trailing_dot_error() {
-        let err = FieldPath::parse("a.").unwrap_err();
-        assert_eq!(err, FieldPathError::EmptySegment);
+        let err = IdentPath::parse("a.").unwrap_err();
+        assert_eq!(err, IdentPathError::EmptySegment);
     }
 
     #[test]
     fn test_parse_leading_dot_error() {
-        let err = FieldPath::parse(".a").unwrap_err();
-        assert_eq!(err, FieldPathError::EmptySegment);
+        let err = IdentPath::parse(".a").unwrap_err();
+        assert_eq!(err, IdentPathError::EmptySegment);
     }
 
     #[test]
     fn test_parse_unmatched_open_bracket_error() {
-        let err = FieldPath::parse("a[0").unwrap_err();
-        assert_eq!(err, FieldPathError::UnmatchedBracket);
+        let err = IdentPath::parse("a[0").unwrap_err();
+        assert_eq!(err, IdentPathError::UnmatchedBracket);
     }
 
     #[test]
     fn test_parse_unmatched_close_bracket_error() {
-        let err = FieldPath::parse("a]0").unwrap_err();
-        assert_eq!(err, FieldPathError::UnmatchedBracket);
+        let err = IdentPath::parse("a]0").unwrap_err();
+        assert_eq!(err, IdentPathError::UnmatchedBracket);
     }
 
     #[test]
     fn test_parse_empty_bracket_error() {
-        let err = FieldPath::parse("a[]").unwrap_err();
-        assert_eq!(err, FieldPathError::EmptyBracket);
+        let err = IdentPath::parse("a[]").unwrap_err();
+        assert_eq!(err, IdentPathError::EmptyBracket);
     }
 
     #[test]
     fn test_parse_invalid_index_error() {
-        let err = FieldPath::parse("a[abc]").unwrap_err();
-        assert_eq!(err, FieldPathError::InvalidIndex);
+        let err = IdentPath::parse("a[abc]").unwrap_err();
+        assert_eq!(err, IdentPathError::InvalidIndex);
     }
 
     #[test]
@@ -243,7 +243,7 @@ mod tests {
         ];
 
         for input in inputs {
-            let path = FieldPath::parse(input).unwrap();
+            let path = IdentPath::parse(input).unwrap();
             assert_eq!(path.to_string(), input);
         }
     }

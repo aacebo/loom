@@ -82,7 +82,7 @@ impl ConfigBuilder {
 mod tests {
     use super::super::providers::MemoryProvider;
     use super::*;
-    use loom_core::path::{FieldPath, FilePath};
+    use loom_core::path::{FilePath, IdentPath};
 
     #[test]
     fn test_builder_with_provider() {
@@ -94,7 +94,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("localhost"));
     }
 
@@ -106,7 +106,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("second"));
     }
 
@@ -124,13 +124,13 @@ mod tests {
             .build()
             .unwrap();
 
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("remotehost"));
 
-        let path = FieldPath::parse("database.port").unwrap();
+        let path = IdentPath::parse("database.port").unwrap();
         assert_eq!(config.get_str(&path), Some("5432"));
 
-        let path = FieldPath::parse("logging.level").unwrap();
+        let path = IdentPath::parse("logging.level").unwrap();
         assert_eq!(config.get_str(&path), Some("debug"));
     }
 

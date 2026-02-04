@@ -2,19 +2,19 @@ mod document;
 mod entity;
 mod error;
 mod etag;
-mod id;
 mod record;
+mod registry;
 pub mod sources;
 
 pub use document::*;
 pub use entity::*;
 pub use error::*;
 pub use etag::*;
-pub use id::*;
 pub use record::*;
+pub use registry::*;
 
 // Re-export loom-core types for convenience
-pub use loom_core::{Format, MediaType, path, value};
+pub use loom_core::{Format, Id, MediaType, path, value};
 
 use async_trait::async_trait;
 

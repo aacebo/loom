@@ -1,19 +1,19 @@
 use serde::de::DeserializeOwned;
 
 use loom_core::Format;
-use loom_core::path::{FieldPath, Path};
+use loom_core::path::{IdentPath, Path};
 use loom_core::value::Value;
 
 use super::{ConfigBuilder, ConfigError, ConfigSection, Env};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ConfigSource {
     pub name: String,
     pub path: Option<Path>,
     pub format: Option<Format>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Config {
     pub(crate) env: Env,
     pub(crate) data: Value,
@@ -47,32 +47,33 @@ impl Config {
         self.format
     }
 
-    pub fn get(&self, path: &FieldPath) -> Option<&Value> {
+    pub fn get(&self, path: &IdentPath) -> Option<&Value> {
         self.data.get_by_path(path)
     }
 
-    pub fn get_str(&self, path: &FieldPath) -> Option<&str> {
+    pub fn get_str(&self, path: &IdentPath) -> Option<&str> {
         self.get(path).and_then(|v| v.as_str())
     }
 
-    pub fn get_int(&self, path: &FieldPath) -> Option<i64> {
+    pub fn get_int(&self, path: &IdentPath) -> Option<i64> {
         self.get(path).and_then(|v| v.as_int())
     }
 
-    pub fn get_float(&self, path: &FieldPath) -> Option<f64> {
+    pub fn get_float(&self, path: &IdentPath) -> Option<f64> {
         self.get(path).and_then(|v| v.as_float())
     }
 
-    pub fn get_bool(&self, path: &FieldPath) -> Option<bool> {
+    pub fn get_bool(&self, path: &IdentPath) -> Option<bool> {
         self.get(path).and_then(|v| v.as_bool())
     }
 
-    pub fn get_section(&self, path: &FieldPath) -> ConfigSection<'_> {
-        ConfigSection::new(self.get(path), path.clone())
+    pub fn get_section(&self, path: &IdentPath) -> ConfigSection {
+        let value = self.get(path).cloned().unwrap_or(Value::Null);
+        ConfigSection::new(value, path.clone())
     }
 
-    pub fn root_section(&self) -> ConfigSection<'_> {
-        ConfigSection::root(&self.data)
+    pub fn root_section(&self) -> ConfigSection {
+        ConfigSection::root(self.data.clone())
     }
 
     pub fn merge(self, other: Self) -> Self {
@@ -146,7 +147,7 @@ impl Config {
         serde_json::from_value(json).map_err(ConfigError::deserialize)
     }
 
-    pub fn bind_section<T: DeserializeOwned>(&self, path: &FieldPath) -> Result<T, ConfigError> {
+    pub fn bind_section<T: DeserializeOwned>(&self, path: &IdentPath) -> Result<T, ConfigError> {
         let value = self
             .get(path)
             .ok_or_else(|| ConfigError::not_found(path.to_string()))?;
@@ -196,38 +197,38 @@ mod tests {
     #[test]
     fn test_get_str() {
         let config = create_test_config();
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(config.get_str(&path), Some("localhost"));
     }
 
     #[test]
     fn test_get_int() {
         let config = create_test_config();
-        let path = FieldPath::parse("database.port").unwrap();
+        let path = IdentPath::parse("database.port").unwrap();
         assert_eq!(config.get_int(&path), Some(5432));
     }
 
     #[test]
     fn test_get_bool() {
         let config = create_test_config();
-        let path = FieldPath::parse("debug").unwrap();
+        let path = IdentPath::parse("debug").unwrap();
         assert_eq!(config.get_bool(&path), Some(true));
     }
 
     #[test]
     fn test_get_array_element() {
         let config = create_test_config();
-        let path = FieldPath::parse("servers[0].name").unwrap();
+        let path = IdentPath::parse("servers[0].name").unwrap();
         assert_eq!(config.get_str(&path), Some("primary"));
 
-        let path = FieldPath::parse("servers[1].port").unwrap();
+        let path = IdentPath::parse("servers[1].port").unwrap();
         assert_eq!(config.get_int(&path), Some(8081));
     }
 
     #[test]
     fn test_get_section() {
         let config = create_test_config();
-        let path = FieldPath::parse("database").unwrap();
+        let path = IdentPath::parse("database").unwrap();
         let section = config.get_section(&path);
 
         assert!(section.exists());
@@ -237,7 +238,7 @@ mod tests {
     #[test]
     fn test_get_nonexistent() {
         let config = create_test_config();
-        let path = FieldPath::parse("nonexistent.path").unwrap();
+        let path = IdentPath::parse("nonexistent.path").unwrap();
         assert!(config.get(&path).is_none());
     }
 
@@ -261,13 +262,13 @@ mod tests {
 
         let merged = config1.merge(config2);
 
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(merged.get_str(&path), Some("remotehost"));
 
-        let path = FieldPath::parse("database.port").unwrap();
+        let path = IdentPath::parse("database.port").unwrap();
         assert_eq!(merged.get_str(&path), Some("5432"));
 
-        let path = FieldPath::parse("logging.level").unwrap();
+        let path = IdentPath::parse("logging.level").unwrap();
         assert_eq!(merged.get_str(&path), Some("debug"));
     }
 
@@ -283,7 +284,7 @@ mod tests {
         }
 
         let config = create_test_config();
-        let path = FieldPath::parse("database").unwrap();
+        let path = IdentPath::parse("database").unwrap();
         let db: DatabaseConfig = config.bind_section(&path).unwrap();
 
         assert_eq!(

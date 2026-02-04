@@ -1,6 +1,6 @@
 use std::io;
 
-use loom_core::path::FieldPathError;
+use loom_core::path::IdentPathError;
 
 /// Errors that can occur during configuration operations
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum ConfigError {
     Deserialize(String),
 
     /// Invalid field path
-    InvalidPath(FieldPathError),
+    InvalidPath(IdentPathError),
 
     /// Provider-specific error
     Provider(String),
@@ -94,8 +94,8 @@ impl From<io::Error> for ConfigError {
     }
 }
 
-impl From<FieldPathError> for ConfigError {
-    fn from(err: FieldPathError) -> Self {
+impl From<IdentPathError> for ConfigError {
+    fn from(err: IdentPathError) -> Self {
         Self::InvalidPath(err)
     }
 }

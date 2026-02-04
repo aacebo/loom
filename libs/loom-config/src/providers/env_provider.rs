@@ -1,6 +1,6 @@
 use std::env;
 
-use loom_core::path::FieldPath;
+use loom_core::path::IdentPath;
 use loom_core::value::{Number, Object, Value};
 
 use super::{ConfigError, Provider};
@@ -81,12 +81,12 @@ impl EnvProvider {
     }
 
     fn set_by_path(root: &mut Value, path_str: &str, value: Value) {
-        let path = match FieldPath::parse(path_str) {
+        let path = match IdentPath::parse(path_str) {
             Ok(p) => p,
             Err(_) => return,
         };
 
-        use loom_core::path::FieldSegment;
+        use loom_core::path::IdentSegment;
 
         let segments = path.segments();
         if segments.is_empty() {
@@ -94,7 +94,7 @@ impl EnvProvider {
         }
 
         if segments.len() == 1 {
-            if let (Value::Object(obj), FieldSegment::Key(key)) = (root, &segments[0]) {
+            if let (Value::Object(obj), IdentSegment::Key(key)) = (root, &segments[0]) {
                 obj.insert(key.clone(), value);
             }
             return;
@@ -106,14 +106,14 @@ impl EnvProvider {
             let is_last = i == segments.len() - 1;
 
             if is_last {
-                if let (Value::Object(obj), FieldSegment::Key(key)) = (current, segment) {
+                if let (Value::Object(obj), IdentSegment::Key(key)) = (current, segment) {
                     obj.insert(key.clone(), value);
                 }
                 return;
             }
 
             current = match (current, segment) {
-                (Value::Object(obj), FieldSegment::Key(key)) => {
+                (Value::Object(obj), IdentSegment::Key(key)) => {
                     if !obj.contains_key(key) {
                         obj.insert(key.clone(), Value::Object(Object::new()));
                     }
@@ -245,7 +245,7 @@ mod tests {
             Value::String("localhost".to_string()),
         );
 
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(root.get_by_path(&path).unwrap().as_str(), Some("localhost"));
     }
 }

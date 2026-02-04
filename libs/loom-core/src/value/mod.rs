@@ -151,15 +151,15 @@ impl Value {
         }
     }
 
-    pub fn get_by_path(&self, path: &crate::path::FieldPath) -> Option<&Value> {
-        use crate::path::FieldSegment;
+    pub fn get_by_path(&self, path: &crate::path::IdentPath) -> Option<&Value> {
+        use crate::path::IdentSegment;
 
         let mut current = self;
 
         for segment in path.segments() {
             current = match (current, segment) {
-                (Value::Object(obj), FieldSegment::Key(key)) => obj.get(key)?,
-                (Value::Array(arr), FieldSegment::Index(idx)) => arr.get(*idx)?,
+                (Value::Object(obj), IdentSegment::Key(key)) => obj.get(key)?,
+                (Value::Array(arr), IdentSegment::Index(idx)) => arr.get(*idx)?,
                 _ => return None,
             };
         }
@@ -167,15 +167,15 @@ impl Value {
         Some(current)
     }
 
-    pub fn get_by_path_mut(&mut self, path: &crate::path::FieldPath) -> Option<&mut Value> {
-        use crate::path::FieldSegment;
+    pub fn get_by_path_mut(&mut self, path: &crate::path::IdentPath) -> Option<&mut Value> {
+        use crate::path::IdentSegment;
 
         let mut current = self;
 
         for segment in path.segments() {
             current = match (current, segment) {
-                (Value::Object(obj), FieldSegment::Key(key)) => obj.get_mut(key)?,
-                (Value::Array(arr), FieldSegment::Index(idx)) => arr.get_mut(*idx)?,
+                (Value::Object(obj), IdentSegment::Key(key)) => obj.get_mut(key)?,
+                (Value::Array(arr), IdentSegment::Index(idx)) => arr.get_mut(*idx)?,
                 _ => return None,
             };
         }

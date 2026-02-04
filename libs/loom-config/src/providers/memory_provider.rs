@@ -1,4 +1,4 @@
-use loom_core::path::{FieldPath, FieldSegment};
+use loom_core::path::{IdentPath, IdentSegment};
 use loom_core::value::{Object, Value};
 
 use super::{ConfigError, Provider};
@@ -28,7 +28,7 @@ impl MemoryProvider {
         let mut root = Value::Object(Object::new());
 
         for (k, v) in items {
-            if let Ok(path) = FieldPath::parse(k.as_ref()) {
+            if let Ok(path) = IdentPath::parse(k.as_ref()) {
                 Self::set_by_path(&mut root, &path, v.into());
             }
         }
@@ -36,7 +36,7 @@ impl MemoryProvider {
         Self { data: root }
     }
 
-    fn set_by_path(root: &mut Value, path: &FieldPath, value: Value) {
+    fn set_by_path(root: &mut Value, path: &IdentPath, value: Value) {
         let segments = path.segments();
         if segments.is_empty() {
             return;
@@ -45,7 +45,7 @@ impl MemoryProvider {
         Self::set_nested(root, segments, value);
     }
 
-    fn set_nested(current: &mut Value, segments: &[FieldSegment], value: Value) {
+    fn set_nested(current: &mut Value, segments: &[IdentSegment], value: Value) {
         if segments.is_empty() {
             return;
         }
@@ -53,7 +53,7 @@ impl MemoryProvider {
         let segment = &segments[0];
         let is_last = segments.len() == 1;
 
-        if let FieldSegment::Key(key) = segment {
+        if let IdentSegment::Key(key) = segment {
             if let Value::Object(obj) = current {
                 if is_last {
                     obj.insert(key.clone(), value);
@@ -104,7 +104,7 @@ mod tests {
             MemoryProvider::from_pairs([("database.host", "localhost"), ("database.port", "5432")]);
 
         let value = provider.load().unwrap().unwrap();
-        let path = FieldPath::parse("database.host").unwrap();
+        let path = IdentPath::parse("database.host").unwrap();
         assert_eq!(
             value.get_by_path(&path).unwrap().as_str(),
             Some("localhost")
@@ -119,7 +119,7 @@ mod tests {
         let provider = MemoryProvider::from_value(Value::Object(obj));
         let value = provider.load().unwrap().unwrap();
 
-        let path = FieldPath::parse("key").unwrap();
+        let path = IdentPath::parse("key").unwrap();
         assert_eq!(value.get_by_path(&path).unwrap().as_str(), Some("value"));
     }
 
@@ -128,7 +128,7 @@ mod tests {
         let provider = MemoryProvider::from_pairs([("a.b.c", "deep")]);
 
         let value = provider.load().unwrap().unwrap();
-        let path = FieldPath::parse("a.b.c").unwrap();
+        let path = IdentPath::parse("a.b.c").unwrap();
         assert_eq!(value.get_by_path(&path).unwrap().as_str(), Some("deep"));
     }
 
