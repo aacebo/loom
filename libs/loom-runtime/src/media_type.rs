@@ -2,7 +2,7 @@ use std::path::Path;
 
 /// A pragmatic media type for ingestion.
 /// Keep this stable: it will end up in stored metadata and indexes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum MediaType {
     // --- Text / structured text ---
     TextPlain,

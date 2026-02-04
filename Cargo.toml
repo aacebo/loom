@@ -25,6 +25,7 @@ storage = { path = "./crates/storage", version = "0.0.1" }
 
 # 3rd party
 async-trait = { version = "0.1" }
+blake3 = { version = "0.1" }
 uuid = { version = "1.19", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["default", "derive"] }

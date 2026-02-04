@@ -1,8 +1,14 @@
+mod document;
+mod entity;
 mod error;
+mod etag;
+mod id;
 
+pub use document::*;
+pub use entity::*;
 pub use error::*;
-
-use crate::Document;
+pub use etag::*;
+pub use id::*;
 
 pub trait DataSource {
     fn read(&self) -> Result<Document, ReadError>;

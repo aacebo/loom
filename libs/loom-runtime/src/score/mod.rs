@@ -68,9 +68,9 @@ impl ScoreLayer {
             elapse_message = format!("{}h", elapse.num_hours());
         }
 
-        result.meta.set("elapse", elapse_message);
-        result.meta.set("step", ctx.step);
-        result.meta.set("text", ctx.text.clone());
+        result.meta.set("elapse", elapse_message.into());
+        result.meta.set("step", ctx.step.into());
+        result.meta.set("text", ctx.text.clone().into());
         Ok(result)
     }
 }
