@@ -8,7 +8,7 @@ use crate::MediaType;
 use crate::path::{FieldPath, Path};
 use crate::value::Value;
 
-use super::{DataSource, Document, Entity, Id, ReadError, WriteError};
+use crate::data_source::{DataSource, Document, Entity, Id, ReadError, WriteError};
 
 #[derive(Debug, Clone)]
 pub struct YamlFileSourceOptions {

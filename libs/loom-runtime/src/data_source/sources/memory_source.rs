@@ -3,7 +3,7 @@ use std::sync::RwLock;
 
 use crate::path::Path;
 
-use super::{DataSource, Document, Id, ReadError, WriteError};
+use crate::data_source::{DataSource, Document, Id, ReadError, WriteError};
 
 pub struct MemorySource {
     documents: RwLock<HashMap<Id, Document>>,

@@ -3,22 +3,13 @@ mod entity;
 mod error;
 mod etag;
 mod id;
-#[cfg(feature = "json")]
-mod json;
-mod memory;
-#[cfg(feature = "yaml")]
-mod yaml;
+pub mod sources;
 
 pub use document::*;
 pub use entity::*;
 pub use error::*;
 pub use etag::*;
 pub use id::*;
-#[cfg(feature = "json")]
-pub use json::*;
-pub use memory::*;
-#[cfg(feature = "yaml")]
-pub use yaml::*;
 
 use crate::path::Path;
 
