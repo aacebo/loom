@@ -32,7 +32,7 @@ runtime = ["dep:loom-runtime"]
 tokio = ["sync", "loom-sync?/tokio"]
 
 # Convenience feature to enable all crates
-full = ["core", "config", "io", "codec", "pipe", "error", "sync", "signal", "runtime"]
+full = ["core", "config", "io", "codec", "pipe", "error", "sync", "signal", "runtime", "json", "yaml", "toml"]
 
 [dependencies]
 loom-core = { workspace = true, optional = true }

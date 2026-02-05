@@ -2350,7 +2350,7 @@ name = "loom-cli"
 version = "0.0.1"
 dependencies = [
  "clap",
- "loom-runtime",
+ "loom",
  "serde",
  "serde_json",
 ]

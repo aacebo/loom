@@ -26,7 +26,7 @@ impl ModelConfig {
     }
 
     /// Returns the model type for this configuration
-    pub fn model_type(&self) -> &ModelType {
+    pub fn model(&self) -> &ModelType {
         match self {
             Self::Local(local) => &local.model,
             Self::Remote(remote) => &remote.model,

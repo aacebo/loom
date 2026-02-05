@@ -92,6 +92,7 @@ impl ScoreLayer {
 
         // Build ScoreCategory for each category in config
         let mut categories = Vec::new();
+
         for cat_config in &self.config.categories {
             let mut labels = Vec::new();
 
@@ -116,11 +117,7 @@ impl ScoreLayer {
         }
 
         let mut result = LayerResult::new(ScoreResult::new(categories));
-
-        // Compute effective threshold based on text length
         let effective_threshold = self.config.threshold_of(ctx.text.len());
-
-        // Check for phatic content (special case)
         let phatic_score = result.output.label_score("phatic");
         let phatic_threshold = self
             .config
