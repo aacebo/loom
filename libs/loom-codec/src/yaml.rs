@@ -29,7 +29,6 @@ impl Codec for YamlCodec {
         let docs = Yaml::load_from_str(&text).map_err(|e| CodecError::Decode(e.to_string()))?;
         let yaml = docs.into_iter().next().unwrap_or(Yaml::Null);
         let value = Value::from(yaml);
-
         let entity = Entity::new(
             IdentPath::parse("root").expect("valid field path"),
             record.media_type.as_mime_str(),
