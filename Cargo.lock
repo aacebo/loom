@@ -2347,6 +2347,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-assert"
+version = "0.0.1"
+
+[[package]]
 name = "loom-cli"
 version = "0.0.1"
 dependencies = [
@@ -2422,6 +2426,11 @@ dependencies = [
 [[package]]
 name = "loom-pipe"
 version = "0.0.1"
+dependencies = [
+ "loom-core",
+ "loom-error",
+ "loom-sync",
+]
 
 [[package]]
 name = "loom-runtime"

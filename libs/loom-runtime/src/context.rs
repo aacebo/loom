@@ -1,4 +1,5 @@
 use loom_core::Map;
+use loom_pipe::LayerContext;
 
 #[derive(Debug, Default)]
 pub struct Context<Input> {
@@ -16,5 +17,23 @@ impl<Input> Context<Input> {
             text: text.to_string(),
             input,
         }
+    }
+}
+
+impl<Input: Send + 'static> LayerContext for Context<Input> {
+    fn text(&self) -> &str {
+        &self.text
+    }
+
+    fn step(&self) -> usize {
+        self.step
+    }
+
+    fn meta(&self) -> &Map {
+        &self.meta
+    }
+
+    fn meta_mut(&mut self) -> &mut Map {
+        &mut self.meta
     }
 }

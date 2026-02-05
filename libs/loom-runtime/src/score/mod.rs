@@ -11,7 +11,8 @@ use loom_cortex::bench::{Decision, Scorer, ScorerOutput};
 use loom_error::{Error, ErrorCode};
 use loom_pipe::Build;
 
-use crate::{Context, LayerResult};
+use crate::Context;
+use loom_pipe::LayerResult;
 
 pub struct ScoreLayer {
     model: CortexModel,
@@ -171,6 +172,19 @@ impl<Input: 'static> loom_pipe::Operator<Context<Input>> for ScoreLayer {
 
     fn apply(self, src: loom_pipe::Source<Context<Input>>) -> loom_pipe::Source<Self::Output> {
         loom_pipe::Source::new(move || self.invoke(src.build()))
+    }
+}
+
+impl loom_pipe::Layer for ScoreLayer {
+    type Input = Context<()>;
+    type Output = ScoreResult;
+
+    fn process(&self, input: Self::Input) -> loom_error::Result<LayerResult<Self::Output>> {
+        self.invoke(input)
+    }
+
+    fn name(&self) -> &'static str {
+        "ScoreLayer"
     }
 }
 

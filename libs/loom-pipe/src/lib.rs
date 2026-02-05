@@ -1,7 +1,10 @@
+// Existing lazy/pull-based pipeline system
 pub mod operators;
+pub mod pipeline;
 mod source;
 mod transformer;
 
+pub use pipeline::{Layer, LayerContext, LayerResult, Pipeline, PipelineBuilder};
 pub use source::*;
 pub use transformer::*;
 

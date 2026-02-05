@@ -1,5 +1,21 @@
 use loom_core::Map;
 
+/// Trait for layer input contexts
+pub trait LayerContext: Send + 'static {
+    /// Get the text being processed
+    fn text(&self) -> &str;
+
+    /// Get the current step in the pipeline
+    fn step(&self) -> usize;
+
+    /// Get metadata
+    fn meta(&self) -> &Map;
+
+    /// Get mutable metadata
+    fn meta_mut(&mut self) -> &mut Map;
+}
+
+/// Result wrapper for layer outputs
 pub struct LayerResult<T> {
     pub meta: Map,
     pub output: T,

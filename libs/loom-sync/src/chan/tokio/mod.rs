@@ -18,7 +18,7 @@ pub use sender::*;
 #[macro_export]
 macro_rules! open {
     () => {{
-        let (sender, receiver) = ::tokio::sync::mpsc::unbounded_channel();
+        let (sender, receiver) = $crate::internal::tokio::sync::mpsc::unbounded_channel();
         (
             $crate::chan::tokio::TokioSender::new($crate::chan::tokio::MpscSender::from(sender)),
             $crate::chan::tokio::TokioReceiver::new($crate::chan::tokio::MpscReceiver::from(
@@ -27,7 +27,7 @@ macro_rules! open {
         )
     }};
     ($capacity:expr) => {{
-        let (sender, receiver) = ::tokio::sync::mpsc::channel($capacity);
+        let (sender, receiver) = $crate::internal::tokio::sync::mpsc::channel($capacity);
         (
             $crate::chan::tokio::TokioSender::new($crate::chan::tokio::MpscSender::from(sender)),
             $crate::chan::tokio::TokioReceiver::new($crate::chan::tokio::MpscReceiver::from(

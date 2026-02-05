@@ -29,7 +29,7 @@ macro_rules! spawn {
     // Blocking closure: spawn!(|| { ... })
     (|| $body:expr) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::task::spawn_blocking(move || {
+        $crate::internal::tokio::task::spawn_blocking(move || {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $body));
             match result {
                 Ok(value) => {
@@ -47,7 +47,7 @@ macro_rules! spawn {
     // Blocking closure with move: spawn!(move || { ... })
     (move || $body:expr) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::task::spawn_blocking(move || {
+        $crate::internal::tokio::task::spawn_blocking(move || {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || $body));
             match result {
                 Ok(value) => {
@@ -65,9 +65,11 @@ macro_rules! spawn {
     // Async block/future: spawn!(async { ... }) or spawn!(some_future)
     ($future:expr) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::spawn(async move {
-            let result =
-                ::futures::FutureExt::catch_unwind(::std::panic::AssertUnwindSafe($future)).await;
+        $crate::internal::tokio::spawn(async move {
+            let result = $crate::internal::futures::FutureExt::catch_unwind(
+                ::std::panic::AssertUnwindSafe($future),
+            )
+            .await;
             match result {
                 Ok(value) => {
                     let _ = handle.ok(value);
@@ -84,7 +86,7 @@ macro_rules! spawn {
     // Blocking closure returning Result: spawn!(|| { ... }, result)
     (|| $body:expr, result) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::task::spawn_blocking(move || {
+        $crate::internal::tokio::task::spawn_blocking(move || {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| $body));
             match result {
                 Ok(Ok(value)) => {
@@ -105,7 +107,7 @@ macro_rules! spawn {
     // Blocking closure with move returning Result: spawn!(move || { ... }, result)
     (move || $body:expr, result) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::task::spawn_blocking(move || {
+        $crate::internal::tokio::task::spawn_blocking(move || {
             let result = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(move || $body));
             match result {
                 Ok(Ok(value)) => {
@@ -126,9 +128,11 @@ macro_rules! spawn {
     // Async returning Result: spawn!(async { ... }, result)
     ($future:expr, result) => {{
         let (task, handle) = $crate::spawn!();
-        ::tokio::spawn(async move {
-            let result =
-                ::futures::FutureExt::catch_unwind(::std::panic::AssertUnwindSafe($future)).await;
+        $crate::internal::tokio::spawn(async move {
+            let result = $crate::internal::futures::FutureExt::catch_unwind(
+                ::std::panic::AssertUnwindSafe($future),
+            )
+            .await;
             match result {
                 Ok(Ok(value)) => {
                     let _ = handle.ok(value);

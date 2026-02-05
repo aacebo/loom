@@ -1,12 +1,14 @@
 mod context;
-mod layer;
 pub mod score;
 
 pub use context::*;
-pub use layer::*;
 
 use loom_codec::{CodecRegistry, CodecRegistryBuilder};
 use loom_io::{DataSourceRegistry, DataSourceRegistryBuilder};
+pub use loom_pipe::{
+    Layer, LayerContext, LayerResult, Pipeline, PipelineBuilder,
+    operators::{Await, FanOut, Filter, Guard, Parallel, Router, Spawn, TryMap},
+};
 
 pub struct Runtime {
     codecs: CodecRegistry,
@@ -24,6 +26,10 @@ impl Runtime {
 
     pub fn sources(&self) -> &DataSourceRegistry {
         &self.sources
+    }
+
+    pub fn pipeline<Input: Send + 'static>(&self) -> PipelineBuilder<Input, Input> {
+        PipelineBuilder::new()
     }
 }
 
