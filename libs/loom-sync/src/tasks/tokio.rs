@@ -76,7 +76,9 @@ macro_rules! spawn {
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.fail_async($crate::tasks::TaskError::panic(msg)).await;
+                    let _ = handle
+                        .fail_async($crate::tasks::TaskError::panic(msg))
+                        .await;
                 }
             }
         });
@@ -142,7 +144,9 @@ macro_rules! spawn {
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.fail_async($crate::tasks::TaskError::panic(msg)).await;
+                    let _ = handle
+                        .fail_async($crate::tasks::TaskError::panic(msg))
+                        .await;
                 }
             }
         });
