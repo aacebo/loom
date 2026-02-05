@@ -1,6 +1,9 @@
 #[cfg(feature = "core")]
 pub use loom_core as core;
 
+#[cfg(feature = "cortex")]
+pub use loom_cortex as cortex;
+
 #[cfg(feature = "config")]
 pub use loom_config as config;
 

@@ -9,6 +9,7 @@ Unified re-export crate for the Loom ecosystem.
 Enable individual crates as needed:
 
 - `core` - Core types (Value, Path, Format, MediaType)
+- `cortex` - AI model types and abstractions
 - `config` - Configuration management
 - `io` - Data source abstractions
 - `codec` - Encoding/decoding (JSON, YAML, TOML)

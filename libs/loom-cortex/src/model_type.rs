@@ -3,9 +3,9 @@ use std::str::FromStr;
 use rust_bert::pipelines::common::ModelType as RustBertModelType;
 use serde::{Deserialize, Serialize};
 
-/// Model architecture type for zero-shot classification
+/// Model architecture type for transformer models
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum ModelType {
+pub enum CortexModelType {
     #[default]
     Bart,
     Bert,
@@ -36,7 +36,7 @@ pub enum ModelType {
     Custom(String),
 }
 
-impl ModelType {
+impl CortexModelType {
     /// Returns the string representation of the model type
     pub fn as_str(&self) -> &str {
         match self {
@@ -158,7 +158,7 @@ impl ModelType {
     }
 }
 
-impl FromStr for ModelType {
+impl FromStr for CortexModelType {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -194,41 +194,41 @@ impl FromStr for ModelType {
     }
 }
 
-impl From<ModelType> for RustBertModelType {
-    fn from(model_type: ModelType) -> Self {
+impl From<CortexModelType> for RustBertModelType {
+    fn from(model_type: CortexModelType) -> Self {
         match model_type {
-            ModelType::Bart => Self::Bart,
-            ModelType::Bert => Self::Bert,
-            ModelType::DistilBert => Self::DistilBert,
-            ModelType::Deberta => Self::Deberta,
-            ModelType::DebertaV2 => Self::DebertaV2,
-            ModelType::Roberta => Self::Roberta,
-            ModelType::XLMRoberta => Self::XLMRoberta,
-            ModelType::Electra => Self::Electra,
-            ModelType::Marian => Self::Marian,
-            ModelType::MobileBert => Self::MobileBert,
-            ModelType::T5 => Self::T5,
-            ModelType::LongT5 => Self::LongT5,
-            ModelType::Albert => Self::Albert,
-            ModelType::XLNet => Self::XLNet,
-            ModelType::GPT2 => Self::GPT2,
-            ModelType::GPTJ => Self::GPTJ,
-            ModelType::OpenAiGpt => Self::OpenAiGpt,
-            ModelType::Reformer => Self::Reformer,
-            ModelType::ProphetNet => Self::ProphetNet,
-            ModelType::Longformer => Self::Longformer,
-            ModelType::Pegasus => Self::Pegasus,
-            ModelType::GPTNeo => Self::GPTNeo,
-            ModelType::MBart => Self::MBart,
-            ModelType::M2M100 => Self::M2M100,
-            ModelType::NLLB => Self::NLLB,
-            ModelType::FNet => Self::FNet,
-            ModelType::Custom(_) => Self::Bart, // fallback for custom types
+            CortexModelType::Bart => Self::Bart,
+            CortexModelType::Bert => Self::Bert,
+            CortexModelType::DistilBert => Self::DistilBert,
+            CortexModelType::Deberta => Self::Deberta,
+            CortexModelType::DebertaV2 => Self::DebertaV2,
+            CortexModelType::Roberta => Self::Roberta,
+            CortexModelType::XLMRoberta => Self::XLMRoberta,
+            CortexModelType::Electra => Self::Electra,
+            CortexModelType::Marian => Self::Marian,
+            CortexModelType::MobileBert => Self::MobileBert,
+            CortexModelType::T5 => Self::T5,
+            CortexModelType::LongT5 => Self::LongT5,
+            CortexModelType::Albert => Self::Albert,
+            CortexModelType::XLNet => Self::XLNet,
+            CortexModelType::GPT2 => Self::GPT2,
+            CortexModelType::GPTJ => Self::GPTJ,
+            CortexModelType::OpenAiGpt => Self::OpenAiGpt,
+            CortexModelType::Reformer => Self::Reformer,
+            CortexModelType::ProphetNet => Self::ProphetNet,
+            CortexModelType::Longformer => Self::Longformer,
+            CortexModelType::Pegasus => Self::Pegasus,
+            CortexModelType::GPTNeo => Self::GPTNeo,
+            CortexModelType::MBart => Self::MBart,
+            CortexModelType::M2M100 => Self::M2M100,
+            CortexModelType::NLLB => Self::NLLB,
+            CortexModelType::FNet => Self::FNet,
+            CortexModelType::Custom(_) => Self::Bart, // fallback for custom types
         }
     }
 }
 
-impl From<RustBertModelType> for ModelType {
+impl From<RustBertModelType> for CortexModelType {
     fn from(model_type: RustBertModelType) -> Self {
         match model_type {
             RustBertModelType::Bart => Self::Bart,

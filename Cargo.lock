@@ -2337,6 +2337,7 @@ dependencies = [
  "loom-codec",
  "loom-config",
  "loom-core",
+ "loom-cortex",
  "loom-error",
  "loom-io",
  "loom-pipe",
@@ -2391,6 +2392,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-cortex"
+version = "0.0.1"
+dependencies = [
+ "console",
+ "loom-config",
+ "rust-bert",
+ "serde",
+ "tch",
+]
+
+[[package]]
 name = "loom-error"
 version = "0.0.1"
 
@@ -2417,15 +2429,14 @@ dependencies = [
  "async-trait",
  "blake3",
  "chrono",
- "console",
  "loom-codec",
  "loom-config",
  "loom-core",
+ "loom-cortex",
  "loom-error",
  "loom-io",
  "loom-pipe",
  "loom-sync",
- "rust-bert",
  "saphyr",
  "serde",
  "serde_json",

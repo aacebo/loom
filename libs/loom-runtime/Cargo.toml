@@ -20,10 +20,6 @@ yaml = ["loom-core/yaml", "loom-config/yaml", "loom-io/yaml", "loom-codec/yaml",
 toml = ["loom-core/toml", "loom-config/toml", "loom-io/toml", "loom-codec/toml", "dep:toml"]
 
 [dependencies]
-rust-bert = { version = "0.23" }
-tch = { version = "0.17" }
-console = { version = "0.16", features = ["std"] }
-
 async-trait = { workspace = true }
 blake3 = { workspace = true }
 chrono = { workspace = true }
@@ -32,7 +28,9 @@ serde_json = { workspace = true, optional = true }
 serde_valid = { workspace = true }
 saphyr = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }
+tch = { workspace = true }
 
+loom-cortex = { workspace = true }
 loom-error = { workspace = true }
 loom-sync = { workspace = true }
 loom-core = { workspace = true }

@@ -6,23 +6,19 @@ pub use result::*;
 
 use std::collections::HashMap;
 
-use loom_pipe::Build;
-use rust_bert::pipelines::zero_shot_classification;
-
+use loom_cortex::CortexModel;
 use loom_error::{Error, ErrorCode};
+use loom_pipe::Build;
 
 use crate::{Context, LayerResult};
 
 pub struct ScoreLayer {
-    model: zero_shot_classification::ZeroShotClassificationModel,
+    model: CortexModel,
     config: ScoreConfig,
 }
 
 impl ScoreLayer {
-    pub(crate) fn new(
-        model: zero_shot_classification::ZeroShotClassificationModel,
-        config: ScoreConfig,
-    ) -> Self {
+    pub(crate) fn new(model: CortexModel, config: ScoreConfig) -> Self {
         Self { model, config }
     }
 
@@ -38,6 +34,17 @@ impl ScoreLayer {
         ctx: Context<Input>,
     ) -> loom_error::Result<LayerResult<ScoreResult>> {
         let started_at = chrono::Utc::now();
+
+        // Extract the zero-shot model
+        let zs_model = match &self.model {
+            CortexModel::ZeroShotClassification { model, .. } => model,
+            _ => {
+                return Err(Error::builder()
+                    .code(ErrorCode::BadArguments)
+                    .message("ScoreLayer requires a ZeroShotClassification model")
+                    .build());
+            }
+        };
 
         // Get all label names from config
         let label_names: Vec<&str> = self
@@ -68,7 +75,7 @@ impl ScoreLayer {
         });
 
         // Run zero-shot classification
-        let predictions = self.model.predict_multilabel(
+        let predictions = zs_model.predict_multilabel(
             &[ctx.text.as_str()],
             &label_names,
             Some(hypothesis_fn),
@@ -271,9 +278,9 @@ mod tests {
 
     #[cfg(feature = "int")]
     fn int_test_config() -> ScoreConfig {
-        use crate::model::ModelConfig;
+        use loom_cortex::CortexModelConfig;
         ScoreConfig {
-            model: ModelConfig::default(),
+            model: CortexModelConfig::default(),
             threshold: 0.40,
             top_k: 2,
             modifiers: ScoreModifierConfig::default(),

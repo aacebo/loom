@@ -21,6 +21,7 @@ toml = ["loom-core?/toml", "loom-config?/toml", "loom-io?/toml", "loom-codec?/to
 
 # Crate features
 core = ["dep:loom-core"]
+cortex = ["dep:loom-cortex"]
 config = ["dep:loom-config"]
 io = ["dep:loom-io"]
 codec = ["dep:loom-codec"]
@@ -32,10 +33,11 @@ runtime = ["dep:loom-runtime"]
 tokio = ["sync", "loom-sync?/tokio"]
 
 # Convenience feature to enable all crates
-full = ["core", "config", "io", "codec", "pipe", "error", "sync", "signal", "runtime", "json", "yaml", "toml"]
+full = ["core", "cortex", "config", "io", "codec", "pipe", "error", "sync", "signal", "runtime", "json", "yaml", "toml"]
 
 [dependencies]
 loom-core = { workspace = true, optional = true }
+loom-cortex = { workspace = true, optional = true }
 loom-config = { workspace = true, optional = true }
 loom-io = { workspace = true, optional = true }
 loom-codec = { workspace = true, optional = true }
