@@ -2,7 +2,9 @@ use std::{any::type_name_of_val, time::Duration};
 
 use tokio::sync::mpsc;
 
-use crate::chan::{Channel, Sender, Status, error::SendError};
+use async_trait::async_trait;
+
+use crate::chan::{AsyncSender, Channel, Sender, Status, error::SendError};
 
 #[derive(Clone)]
 pub struct TokioSender<T> {
@@ -50,6 +52,22 @@ impl<T: Send + 'static> Sender for TokioSender<T> {
 
     fn send(&self, result: T) -> Result<(), SendError> {
         match self.sender.block_send(result) {
+            Err(_) => {
+                if self.status().is_closed() {
+                    Err(SendError::Closed)
+                } else {
+                    Err(SendError::Full)
+                }
+            }
+            Ok(_) => Ok(()),
+        }
+    }
+}
+
+#[async_trait]
+impl<T: Send + 'static> AsyncSender for TokioSender<T> {
+    async fn send_async(&self, item: T) -> Result<(), SendError> {
+        match self.sender.send(item).await {
             Err(_) => {
                 if self.status().is_closed() {
                     Err(SendError::Closed)

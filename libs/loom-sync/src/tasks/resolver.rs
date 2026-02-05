@@ -1,7 +1,4 @@
-use crate::{
-    chan::{AsyncSender, Sender},
-    tasks::TaskResult,
-};
+use crate::{chan::AsyncSender, tasks::TaskResult};
 
 use super::{TaskError, TaskId};
 
@@ -12,11 +9,11 @@ use super::{TaskError, TaskId};
 ///
 pub struct TaskResolver<T: Send + 'static> {
     id: TaskId,
-    sender: Option<Box<dyn Sender<Item = TaskResult<T>>>>,
+    sender: Option<Box<dyn AsyncSender<Item = TaskResult<T>>>>,
 }
 
 impl<T: Send + 'static> TaskResolver<T> {
-    pub fn new<S: Sender<Item = TaskResult<T>>>(id: TaskId, sender: S) -> Self {
+    pub fn new<S: AsyncSender<Item = TaskResult<T>>>(id: TaskId, sender: S) -> Self {
         Self {
             id,
             sender: Some(Box::new(sender)),
@@ -36,6 +33,13 @@ impl<T: Send + 'static> TaskResolver<T> {
         let sender = self.sender.take().expect("sender already consumed");
         sender
             .send(TaskResult::Error(TaskError::Custom(error.to_string())))
+            .map_err(TaskError::from)
+    }
+
+    pub fn fail(mut self, error: TaskError) -> Result<(), TaskError> {
+        let sender = self.sender.take().expect("sender already consumed");
+        sender
+            .send(TaskResult::Error(error))
             .map_err(TaskError::from)
     }
 
@@ -62,6 +66,14 @@ impl<T: Send + 'static> TaskResolver<T> {
             .map_err(TaskError::from)
     }
 
+    pub async fn fail_async(mut self, error: TaskError) -> Result<(), TaskError> {
+        let sender = self.sender.take().expect("sender already consumed");
+        sender
+            .send_async(TaskResult::Error(error))
+            .await
+            .map_err(TaskError::from)
+    }
+
     pub async fn cancel_async(mut self) -> Result<(), TaskError> {
         let sender = self.sender.take().expect("sender already consumed");
         sender
@@ -76,5 +88,119 @@ impl<T: Send + 'static> Drop for TaskResolver<T> {
         // Just drop the sender - this closes the channel
         // The receiver will get a closed channel error
         drop(self.sender.take());
+    }
+}
+
+#[cfg(all(test, feature = "tokio"))]
+mod tests {
+    use crate::spawn;
+    use crate::tasks::Task;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_ok() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        tokio::task::spawn_blocking(move || {
+            resolver.ok(42).unwrap();
+        });
+
+        let result = task.await;
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_error() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        tokio::task::spawn_blocking(move || {
+            resolver.error("test error").unwrap();
+        });
+
+        let result = task.await;
+        let err = result.unwrap_err();
+        assert!(err.is_custom());
+        assert_eq!(err.to_string(), "test error");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_cancel() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        tokio::task::spawn_blocking(move || {
+            resolver.cancel().unwrap();
+        });
+
+        let result = task.await;
+        assert!(result.is_cancelled());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_ok_async() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        let handle = tokio::spawn(async move {
+            resolver.ok_async(42).await.unwrap();
+        });
+
+        // Wait for the spawned task to complete first
+        handle.await.expect("spawn failed");
+
+        let result = task.await;
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_error_async() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        let handle = tokio::spawn(async move {
+            resolver.error_async("async error").await.unwrap();
+        });
+
+        // Wait for the spawned task to complete first
+        handle.await.expect("spawn failed");
+
+        let result = task.await;
+        let err = result.unwrap_err();
+        assert!(err.is_custom());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_cancel_async() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        let handle = tokio::spawn(async move {
+            resolver.cancel_async().await.unwrap();
+        });
+
+        // Wait for the spawned task to complete first
+        handle.await.expect("spawn failed");
+
+        let result = task.await;
+        assert!(result.is_cancelled());
+    }
+
+    #[tokio::test]
+    async fn resolver_drop_without_resolve() {
+        let (task, resolver): (Task<i32>, _) = spawn!();
+
+        // Drop without resolving
+        drop(resolver);
+
+        // Task should receive an error (closed channel)
+        let result = task.await;
+        assert!(result.is_error());
+    }
+
+    #[test]
+    fn resolver_id_matches_task() {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let _guard = rt.enter();
+
+        let (task, resolver): (Task<i32>, _) = spawn!();
+        assert_eq!(task.id(), resolver.id());
     }
 }

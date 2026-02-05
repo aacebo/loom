@@ -23,13 +23,8 @@ pub trait Sender: Channel + Send + Sync + 'static {
 
 #[async_trait]
 pub trait AsyncSender: Sender {
-    async fn send_async(&self, item: Self::Item) -> Result<(), error::SendError> {
-        self.send(item)
-    }
+    async fn send_async(&self, item: Self::Item) -> Result<(), error::SendError>;
 }
-
-#[async_trait]
-impl<T: Sender + ?Sized> AsyncSender for T {}
 
 pub trait Receiver: Channel + Send {
     type Item: Send;

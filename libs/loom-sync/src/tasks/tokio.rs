@@ -37,7 +37,7 @@ macro_rules! spawn {
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail($crate::tasks::TaskError::panic(msg));
                 }
             }
         });
@@ -55,7 +55,7 @@ macro_rules! spawn {
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail($crate::tasks::TaskError::panic(msg));
                 }
             }
         });
@@ -72,11 +72,11 @@ macro_rules! spawn {
             .await;
             match result {
                 Ok(value) => {
-                    let _ = handle.ok(value);
+                    let _ = handle.ok_async(value).await;
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail_async($crate::tasks::TaskError::panic(msg)).await;
                 }
             }
         });
@@ -93,11 +93,11 @@ macro_rules! spawn {
                     let _ = handle.ok(value);
                 }
                 Ok(Err(e)) => {
-                    let _ = handle.error($crate::tasks::TaskError::custom(e));
+                    let _ = handle.fail($crate::tasks::TaskError::custom(e));
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail($crate::tasks::TaskError::panic(msg));
                 }
             }
         });
@@ -114,11 +114,11 @@ macro_rules! spawn {
                     let _ = handle.ok(value);
                 }
                 Ok(Err(e)) => {
-                    let _ = handle.error($crate::tasks::TaskError::custom(e));
+                    let _ = handle.fail($crate::tasks::TaskError::custom(e));
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail($crate::tasks::TaskError::panic(msg));
                 }
             }
         });
@@ -135,14 +135,14 @@ macro_rules! spawn {
             .await;
             match result {
                 Ok(Ok(value)) => {
-                    let _ = handle.ok(value);
+                    let _ = handle.ok_async(value).await;
                 }
                 Ok(Err(e)) => {
-                    let _ = handle.error($crate::tasks::TaskError::custom(e));
+                    let _ = handle.fail_async($crate::tasks::TaskError::custom(e)).await;
                 }
                 Err(panic_info) => {
                     let msg = $crate::tasks::tokio::panic_payload_to_string(panic_info);
-                    let _ = handle.error($crate::tasks::TaskError::panic(msg));
+                    let _ = handle.fail_async($crate::tasks::TaskError::panic(msg)).await;
                 }
             }
         });

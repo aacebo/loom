@@ -54,3 +54,94 @@ impl<T: Send + 'static> std::fmt::Debug for TaskResult<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn result_ok() {
+        let result: TaskResult<i32> = TaskResult::Ok(42);
+        assert!(result.is_ok());
+        assert!(!result.is_error());
+        assert!(!result.is_cancelled());
+    }
+
+    #[test]
+    fn result_error() {
+        let result: TaskResult<i32> = TaskResult::Error(TaskError::Custom("err".to_string()));
+        assert!(result.is_error());
+        assert!(!result.is_ok());
+        assert!(!result.is_cancelled());
+    }
+
+    #[test]
+    fn result_cancelled() {
+        let result: TaskResult<i32> = TaskResult::Cancelled;
+        assert!(result.is_cancelled());
+        assert!(!result.is_ok());
+        assert!(!result.is_error());
+    }
+
+    #[test]
+    fn unwrap_ok() {
+        let result: TaskResult<i32> = TaskResult::Ok(42);
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cancelled")]
+    fn unwrap_cancelled_panics() {
+        let result: TaskResult<i32> = TaskResult::Cancelled;
+        result.unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Error")]
+    fn unwrap_error_panics() {
+        let result: TaskResult<i32> = TaskResult::Error(TaskError::Custom("err".to_string()));
+        result.unwrap();
+    }
+
+    #[test]
+    fn unwrap_err_returns_error() {
+        let result: TaskResult<i32> = TaskResult::Error(TaskError::Cancelled);
+        let err = result.unwrap_err();
+        assert!(err.is_cancelled());
+    }
+
+    #[test]
+    #[should_panic(expected = "Ok")]
+    fn unwrap_err_on_ok_panics() {
+        let result: TaskResult<i32> = TaskResult::Ok(42);
+        result.unwrap_err();
+    }
+
+    #[test]
+    #[should_panic(expected = "Cancelled")]
+    fn unwrap_err_on_cancelled_panics() {
+        let result: TaskResult<i32> = TaskResult::Cancelled;
+        result.unwrap_err();
+    }
+
+    #[test]
+    fn debug_ok() {
+        let result: TaskResult<i32> = TaskResult::Ok(42);
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("TaskResult::Ok"));
+    }
+
+    #[test]
+    fn debug_error() {
+        let result: TaskResult<i32> = TaskResult::Error(TaskError::Cancelled);
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("TaskResult::Err"));
+    }
+
+    #[test]
+    fn debug_cancelled() {
+        let result: TaskResult<i32> = TaskResult::Cancelled;
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("TaskResult::Cancelled"));
+    }
+}
