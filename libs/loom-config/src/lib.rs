@@ -2,6 +2,7 @@ mod builder;
 mod config;
 mod env;
 mod error;
+mod logging;
 pub mod providers;
 mod section;
 
@@ -9,6 +10,7 @@ pub use builder::*;
 pub use config::*;
 pub use env::*;
 pub use error::*;
+pub use logging::*;
 pub use providers::{EnvProvider, FileProvider, MemoryProvider, Provider};
 pub use section::*;
 

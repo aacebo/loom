@@ -1,4 +1,4 @@
-use loom_core::path::{IdentPath, IdentSegment};
+use loom_core::path::{IdentPath, IdentSegment, Path};
 use loom_core::value::{Object, Value};
 
 use super::{ConfigError, Provider};
@@ -79,6 +79,10 @@ impl Default for MemoryProvider {
 impl Provider for MemoryProvider {
     fn name(&self) -> &str {
         "memory"
+    }
+
+    fn path(&self) -> Path {
+        Path::Empty
     }
 
     fn optional(&self) -> bool {

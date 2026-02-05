@@ -1,6 +1,6 @@
 use std::env;
 
-use loom_core::path::IdentPath;
+use loom_core::path::{IdentPath, Path};
 use loom_core::value::{Number, Object, Value};
 
 use super::{ConfigError, Provider};
@@ -134,6 +134,10 @@ impl Default for EnvProvider {
 impl Provider for EnvProvider {
     fn name(&self) -> &str {
         "environment"
+    }
+
+    fn path(&self) -> Path {
+        Path::Empty
     }
 
     fn optional(&self) -> bool {

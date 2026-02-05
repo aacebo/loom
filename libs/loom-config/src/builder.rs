@@ -51,7 +51,7 @@ impl ConfigBuilder {
                     merged.merge(value);
                     sources.push(ConfigSource {
                         name: provider.name().to_string(),
-                        path: provider.path(),
+                        path: provider.path().clone(),
                         format: provider.format(),
                     });
                 }

@@ -16,6 +16,12 @@ impl FilePath {
     }
 }
 
+impl From<std::path::PathBuf> for FilePath {
+    fn from(value: std::path::PathBuf) -> Self {
+        Self(value)
+    }
+}
+
 impl std::ops::Deref for FilePath {
     type Target = std::path::Path;
 

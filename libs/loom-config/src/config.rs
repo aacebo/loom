@@ -9,8 +9,8 @@ use super::{ConfigBuilder, ConfigError, ConfigSection, Env};
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct ConfigSource {
     pub name: String,
-    pub path: Option<Path>,
-    pub format: Option<Format>,
+    pub path: Path,
+    pub format: Format,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]

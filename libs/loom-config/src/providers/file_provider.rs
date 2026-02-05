@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use loom_core::Format;
-use loom_core::path::{FilePath, Path};
+use loom_core::path::FilePath;
 use loom_core::value::Value;
+use loom_core::{Format, path::Path};
 
 use super::{ConfigError, Provider};
 
@@ -98,18 +98,16 @@ impl Provider for FileProvider {
         self.path.to_str().unwrap_or("file")
     }
 
+    fn path(&self) -> Path {
+        FilePath::from(self.path.clone()).into()
+    }
+
     fn optional(&self) -> bool {
         self.is_optional
     }
 
-    fn path(&self) -> Option<Path> {
-        Some(Path::File(FilePath::parse(
-            self.path.to_str().unwrap_or(""),
-        )))
-    }
-
-    fn format(&self) -> Option<Format> {
-        Some(self.format)
+    fn format(&self) -> Format {
+        self.format
     }
 
     fn load(&self) -> Result<Option<Value>, ConfigError> {

@@ -16,15 +16,12 @@ use super::ConfigError;
 pub trait Provider: Send + Sync {
     fn name(&self) -> &str;
     fn load(&self) -> Result<Option<Value>, ConfigError>;
+    fn path(&self) -> Path;
     fn optional(&self) -> bool {
         false
     }
 
-    fn path(&self) -> Option<Path> {
-        None
-    }
-
-    fn format(&self) -> Option<Format> {
-        None
+    fn format(&self) -> Format {
+        Format::Binary
     }
 }

@@ -11,9 +11,9 @@ pub use uri::*;
 ///
 /// # Variants
 ///
-/// - `path!(file "path/to/file")` - Creates a `Path::File`
-/// - `path!(uri "https://example.com")` - Creates a `Path::Uri` (panics on invalid URI)
-/// - `path!(field "object.field[0]")` - Creates a `Path::Field` (panics on invalid field path)
+/// - `path!(file => "path/to/file")` - Creates a `Path::File`
+/// - `path!(uri => "https://example.com")` - Creates a `Path::Uri` (panics on invalid URI)
+/// - `path!(ident => "object.field[0]")` - Creates a `Path::Ident` (panics on invalid field path)
 ///
 /// # Examples
 ///
@@ -26,27 +26,61 @@ pub use uri::*;
 /// ```
 #[macro_export]
 macro_rules! path {
-    (file $path:expr) => {
+    (file => $path:expr) => {
+        $crate::file_path!(&$path)
+    };
+    (uri => $path:expr) => {
+        $crate::uri_path!(
+            &$crate::path::UriPath::parse($path)
+                .expect("invalid URI")
+                .to_string()
+        )
+    };
+    (ident => $path:expr) => {
+        $crate::ident_path!(
+            &$crate::path::IdentPath::parse($path)
+                .expect("invalid field path")
+                .to_string()
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! file_path {
+    ($path:expr) => {
         $crate::path::Path::File($crate::path::FilePath::parse($path))
     };
-    (uri $path:expr) => {
+}
+
+#[macro_export]
+macro_rules! uri_path {
+    ($path:expr) => {
         $crate::path::Path::Uri($crate::path::UriPath::parse($path).expect("invalid URI"))
     };
-    (field $path:expr) => {
-        $crate::path::Path::Field(
-            $crate::path::IdentPath::parse($path).expect("invalid field path"),
+}
+
+#[macro_export]
+macro_rules! ident_path {
+    ($path:expr) => {
+        $crate::path::Path::Ident(
+            $crate::path::IdentPath::parse($path).expect("invalid ident path"),
         )
     };
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Path {
+    Empty,
     File(FilePath),
     Uri(UriPath),
-    Field(IdentPath),
+    Ident(IdentPath),
 }
 
 impl Path {
+    pub fn is_empty(&self) -> bool {
+        matches!(self, Self::Empty)
+    }
+
     pub fn is_file(&self) -> bool {
         matches!(self, Self::File(_))
     }
@@ -55,17 +89,42 @@ impl Path {
         matches!(self, Self::Uri(_))
     }
 
-    pub fn is_field(&self) -> bool {
-        matches!(self, Self::Field(_))
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Ident(_))
+    }
+}
+
+impl Default for Path {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl From<FilePath> for Path {
+    fn from(value: FilePath) -> Self {
+        Self::File(value)
+    }
+}
+
+impl From<UriPath> for Path {
+    fn from(value: UriPath) -> Self {
+        Self::Uri(value)
+    }
+}
+
+impl From<IdentPath> for Path {
+    fn from(value: IdentPath) -> Self {
+        Self::Ident(value)
     }
 }
 
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Empty => write!(f, "empty"),
             Self::File(v) => write!(f, "{}", v),
             Self::Uri(v) => write!(f, "{}", v),
-            Self::Field(v) => write!(f, "{}", v),
+            Self::Ident(v) => write!(f, "{}", v),
         }
     }
 }
@@ -76,22 +135,22 @@ mod tests {
 
     #[test]
     fn test_path_macro_file() {
-        let path = path!(file "/home/user/file.txt");
+        let path = path!(file => "/home/user/file.txt");
         assert!(path.is_file());
         assert_eq!(path.to_string(), "/home/user/file.txt");
     }
 
     #[test]
     fn test_path_macro_uri() {
-        let path = path!(uri "https://example.com/path");
+        let path = path!(uri => "https://example.com/path");
         assert!(path.is_uri());
         assert_eq!(path.to_string(), "https://example.com/path");
     }
 
     #[test]
     fn test_path_macro_field() {
-        let path = path!(field "object.field[0]");
-        assert!(path.is_field());
+        let path = path!(ident => "object.field[0]");
+        assert!(path.is_ident());
         assert_eq!(path.to_string(), "object.field[0]");
     }
 
@@ -100,7 +159,7 @@ mod tests {
         let path = Path::File(FilePath::parse("/home/user/file.txt"));
         assert!(path.is_file());
         assert!(!path.is_uri());
-        assert!(!path.is_field());
+        assert!(!path.is_ident());
     }
 
     #[test]
@@ -108,15 +167,15 @@ mod tests {
         let path = Path::Uri(UriPath::parse("https://example.com").unwrap());
         assert!(!path.is_file());
         assert!(path.is_uri());
-        assert!(!path.is_field());
+        assert!(!path.is_ident());
     }
 
     #[test]
-    fn test_path_is_field() {
-        let path = Path::Field(IdentPath::parse("object.field").unwrap());
+    fn test_path_is_ident() {
+        let path = Path::Ident(IdentPath::parse("object.field").unwrap());
         assert!(!path.is_file());
         assert!(!path.is_uri());
-        assert!(path.is_field());
+        assert!(path.is_ident());
     }
 
     #[test]
@@ -126,8 +185,8 @@ mod tests {
     }
 
     #[test]
-    fn test_path_display_field() {
-        let path = Path::Field(IdentPath::parse("object.field[0]").unwrap());
+    fn test_path_display_ident() {
+        let path = Path::Ident(IdentPath::parse("object.field[0]").unwrap());
         assert_eq!(path.to_string(), "object.field[0]");
     }
 }
