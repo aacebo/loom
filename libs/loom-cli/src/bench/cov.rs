@@ -1,12 +1,19 @@
+use std::io::stdout;
 use std::path::PathBuf;
 
+use crossterm::ExecutableCommand;
+use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use loom::io::path::{FilePath, Path};
 use loom::runtime::bench::{self, Category};
 
 use super::build_runtime;
+use crate::widgets::{self, Widget};
 
 pub async fn exec(path: &PathBuf) {
-    println!("Analyzing coverage for {:?}...\n", path);
+    widgets::Spinner::new()
+        .message(format!("Analyzing coverage for {:?}...", path))
+        .render()
+        .write();
 
     let runtime = build_runtime();
     let file_path = Path::File(FilePath::from(path.clone()));
@@ -14,12 +21,16 @@ pub async fn exec(path: &PathBuf) {
     let dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
         Ok(d) => d,
         Err(e) => {
+            widgets::Spinner::clear();
             eprintln!("Error loading dataset: {}", e);
             std::process::exit(1);
         }
     };
 
+    widgets::Spinner::clear();
+
     let coverage = dataset.coverage();
+    let mut stdout = stdout();
 
     println!("=== Dataset Coverage ===\n");
     println!("Total samples: {}", coverage.total_samples);
@@ -38,17 +49,19 @@ pub async fn exec(path: &PathBuf) {
         Category::Phatic,
         Category::Ambiguous,
     ];
+
     for cat in categories {
         let count = coverage.samples_by_category.get(&cat).unwrap_or(&0);
         let target = 50;
-        let status = if *count >= target { "✓" } else { "○" };
-        println!(
-            "  {} {:12} {:3}/{}",
-            status,
-            format!("{:?}", cat),
-            count,
-            target
-        );
+        let (status, color) = if *count >= target {
+            ("✓", Color::Green)
+        } else {
+            ("○", Color::Yellow)
+        };
+        let _ = stdout.execute(SetForegroundColor(color));
+        print!("  {} ", status);
+        let _ = stdout.execute(ResetColor);
+        println!("{:12} {:3}/{}", format!("{:?}", cat), count, target);
     }
 
     println!("\n=== By Label ===\n");
@@ -56,8 +69,15 @@ pub async fn exec(path: &PathBuf) {
     labels.sort_by_key(|(label, _)| label.as_str());
 
     for (label, count) in labels {
-        let status = if *count >= 3 { "✓" } else { "○" };
-        println!("  {} {:20} {}", status, label, count);
+        let (status, color) = if *count >= 3 {
+            ("✓", Color::Green)
+        } else {
+            ("○", Color::Yellow)
+        };
+        let _ = stdout.execute(SetForegroundColor(color));
+        print!("  {} ", status);
+        let _ = stdout.execute(ResetColor);
+        println!("{:20} {}", label, count);
     }
 
     if !coverage.missing_labels.is_empty() {
@@ -66,7 +86,10 @@ pub async fn exec(path: &PathBuf) {
             coverage.missing_labels.len()
         );
         for label in &coverage.missing_labels {
-            println!("  ✗ {}", label);
+            let _ = stdout.execute(SetForegroundColor(Color::Red));
+            print!("  ✗ ");
+            let _ = stdout.execute(ResetColor);
+            println!("{}", label);
         }
     }
 }

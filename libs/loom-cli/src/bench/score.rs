@@ -1,4 +1,3 @@
-use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -7,6 +6,7 @@ use loom::io::path::{FilePath, Path};
 use loom::runtime::{bench, score::ScoreConfig};
 
 use super::build_runtime;
+use crate::widgets::{self, Widget};
 
 pub async fn exec(
     path: &PathBuf,
@@ -73,20 +73,12 @@ pub async fn exec(
     };
 
     let progress_callback = |p: bench::Progress| {
-        let pct = (p.current as f32 / p.total as f32 * 100.0) as usize;
-        let bar_width = 30;
-        let filled = pct * bar_width / 100;
-        let empty = bar_width - filled;
-        print!(
-            "\r[{}{}] {:3}% ({:3}/{:3}) {}\x1B[K",
-            "█".repeat(filled),
-            "░".repeat(empty),
-            pct,
-            p.current,
-            p.total,
-            p.sample_id
-        );
-        let _ = io::stdout().flush();
+        widgets::ProgressBar::new()
+            .total(p.total)
+            .current(p.current)
+            .message(&p.sample_id)
+            .render()
+            .write();
     };
 
     let export = if batch_size > 1 {
@@ -96,7 +88,7 @@ pub async fn exec(
     };
 
     // Clear the progress line
-    print!("\r\x1B[K");
+    widgets::ProgressBar::clear();
     println!("Extracted scores for {} samples", total);
 
     // Write to output file using runtime

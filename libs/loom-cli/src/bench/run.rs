@@ -1,4 +1,3 @@
-use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -6,6 +5,7 @@ use loom::io::path::{FilePath, Path};
 use loom::runtime::{bench, score::ScoreConfig};
 
 use super::build_runtime;
+use crate::widgets::{self, Widget};
 
 pub async fn exec(
     path: &PathBuf,
@@ -69,22 +69,14 @@ pub async fn exec(
     };
 
     let progress_callback = |p: bench::Progress| {
-        let pct = (p.current as f32 / p.total as f32 * 100.0) as usize;
-        let bar_width = 30;
-        let filled = pct * bar_width / 100;
-        let empty = bar_width - filled;
-        let status = if p.correct { "✓" } else { "✗" };
-        print!(
-            "\r[{}{}] {:3}% ({:3}/{:3}) {} {}\x1B[K",
-            "█".repeat(filled),
-            "░".repeat(empty),
-            pct,
-            p.current,
-            p.total,
-            status,
-            p.sample_id
-        );
-        let _ = io::stdout().flush();
+        let status = if p.correct { '✓' } else { '✗' };
+        widgets::ProgressBar::new()
+            .total(p.total)
+            .current(p.current)
+            .message(&p.sample_id)
+            .status(status)
+            .render()
+            .write();
     };
 
     let result = if batch_size > 1 {
@@ -94,7 +86,7 @@ pub async fn exec(
     };
 
     // Clear the progress line
-    print!("\r\x1B[K");
+    widgets::ProgressBar::clear();
     println!("Completed {} samples\n", total);
 
     // Compute metrics from raw counts
@@ -140,14 +132,13 @@ pub async fn exec(
         }
 
         println!("\n=== Per-Label Results ===\n");
-        println!(
-            "{:20} {:>6} {:>6} {:>6} {:>8} {:>8} {:>8}",
-            "Label", "Expect", "Detect", "TP", "Prec", "Recall", "F1"
-        );
-        println!("{}", "-".repeat(74));
 
         let mut labels: Vec<_> = result.per_label.iter().collect();
         labels.sort_by_key(|(label, _)| label.as_str());
+
+        let mut table = widgets::Table::new().headers(vec![
+            "Label", "Expect", "Detect", "TP", "Prec", "Recall", "F1",
+        ]);
 
         for (label, label_result) in labels {
             if label_result.expected_count > 0 || label_result.detected_count > 0 {
@@ -155,18 +146,19 @@ pub async fn exec(
                 let (precision, recall, f1) = label_metrics
                     .map(|m| (m.precision, m.recall, m.f1))
                     .unwrap_or((0.0, 0.0, 0.0));
-                println!(
-                    "{:20} {:>6} {:>6} {:>6} {:>8.3} {:>8.3} {:>8.3}",
-                    label,
-                    label_result.expected_count,
-                    label_result.detected_count,
-                    label_result.true_positives,
-                    precision,
-                    recall,
-                    f1
-                );
+                table = table.row(vec![
+                    label.to_string(),
+                    label_result.expected_count.to_string(),
+                    label_result.detected_count.to_string(),
+                    label_result.true_positives.to_string(),
+                    format!("{:.3}", precision),
+                    format!("{:.3}", recall),
+                    format!("{:.3}", f1),
+                ]);
             }
         }
+
+        print!("{}", table);
 
         // Show misclassified samples
         let incorrect: Vec<_> = result

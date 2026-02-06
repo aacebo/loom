@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 mod bench;
+pub mod widgets;
 
 #[derive(Parser)]
 #[command(name = "loom")]
