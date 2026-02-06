@@ -2,8 +2,8 @@
 # Root configuration with CLI parameters at top level
 
 # Optional top-level CLI options (uncomment to override defaults)
-output: "output/scores.json"
-strict: true
+output: "output/label.scores.json"
+strict: false
 concurrency: 4
 batch_size: 8
 
