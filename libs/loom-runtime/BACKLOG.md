@@ -3,5 +3,5 @@
 See the [global backlog](/backlog/README.md) for all planned work.
 
 Relevant phases for loom-runtime:
-- [Phase 08: Result Metadata](/backlog/08-result-metadata.md)
-- [Phase 09: Error Aggregation](/backlog/09-error-aggregation.md)
+- [Phase 01: Result Metadata](/backlog/01-result-metadata.md)
+- [Phase 02: Error Aggregation](/backlog/02-error-aggregation.md)

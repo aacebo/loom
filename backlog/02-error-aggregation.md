@@ -1,10 +1,10 @@
-# Phase 09: Error Aggregation
+# Phase 02: Error Aggregation
 
 **Status:** PENDING
 
 **Crate:** loom-runtime
 
-**Depends on:** Phase 08 (result metadata)
+**Depends on:** Phase 01 (result metadata)
 
 ## Goal
 

@@ -1,10 +1,10 @@
-# Phase 08: Result Metadata
+# Phase 01: Result Metadata
 
 **Status:** PENDING
 
 **Crate:** loom-runtime
 
-**Depends on:** Phase 07 (eval module structure)
+**Depends on:** (none)
 
 ## Goal
 

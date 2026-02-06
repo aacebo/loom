@@ -16,7 +16,7 @@ use loom_error::Result;
 use loom_io::{DataSourceRegistry, DataSourceRegistryBuilder, path::Path};
 pub use loom_pipe::{
     Layer, LayerContext, LayerResult, Pipeline, PipelineBuilder,
-    operators::{Await, FanOut, Filter, Parallel, Router, Spawn, TryMap},
+    operators::{Await, FanOut, Filter, Fork, Parallel, Router, TryMap},
 };
 use serde::{Serialize, de::DeserializeOwned};
 

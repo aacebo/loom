@@ -104,13 +104,18 @@ where
         }
     }
 
-    /// Spawn a new parallel branch
-    pub fn spawn<F>(mut self, f: F) -> Self
+    /// Fork a new parallel branch
+    pub fn fork<F>(mut self, f: F) -> Self
     where
         F: FnOnce(T) -> O + Send + 'static,
     {
         self.parallel = self.parallel.add(f);
         self
+    }
+
+    /// Wait for all forked branches and collect results
+    pub fn join(self) -> Vec<TaskResult<O>> {
+        self.build()
     }
 }
 
@@ -271,9 +276,9 @@ mod tests {
         let _guard = rt.enter();
         let results = Source::from(10)
             .parallel()
-            .spawn(|x| x * 2)
-            .spawn(|x| x + 5)
-            .build();
+            .fork(|x| x * 2)
+            .fork(|x| x + 5)
+            .join();
 
         assert_eq!(results.len(), 2);
         let values: Vec<i32> = results.into_iter().map(|r| r.unwrap()).collect();

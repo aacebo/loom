@@ -10,8 +10,8 @@ pub use transformer::*;
 
 // Re-export extension traits for convenience
 pub use operators::{
-    AwaitPipe, FanOutBuilder, FanOutPipe, FilterPipe, MapPipe, ParallelBuilder, ParallelPipe,
-    RouterBuilder, RouterPipe, SpawnPipe, TryMapPipe,
+    AwaitPipe, FanOutBuilder, FanOutPipe, FilterPipe, ForkPipe, MapPipe, ParallelBuilder,
+    ParallelPipe, RouterBuilder, RouterPipe, TryMapPipe,
 };
 
 pub trait Operator<Input> {

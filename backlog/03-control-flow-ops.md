@@ -1,10 +1,10 @@
-# Phase 10: Control Flow Operators
+# Phase 03: Control Flow Operators
 
 **Status:** PENDING
 
 **Crate:** loom-pipe
 
-**Depends on:** Phase 06 (fork/join API patterns)
+**Depends on:** (none)
 
 ## Goal
 

@@ -1,10 +1,10 @@
-# Phase 12: Collection Operators
+# Phase 05: Collection Operators
 
 **Status:** PENDING
 
 **Crate:** loom-pipe
 
-**Depends on:** Phase 06 (fork/join API patterns)
+**Depends on:** Phase 03 (control flow operators)
 
 ## Goal
 

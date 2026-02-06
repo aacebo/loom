@@ -49,7 +49,7 @@ impl<T: Send + 'static, P: Pipe<Task<T>> + Sized> AwaitPipe<T> for P {}
 mod tests {
     use super::*;
     use crate::Pipe;
-    use crate::operators::Spawn;
+    use crate::operators::Fork;
 
     #[test]
     fn waits_for_task() {
@@ -59,7 +59,7 @@ mod tests {
             .unwrap();
         let _guard = rt.enter();
         let result = Source::from(5)
-            .pipe(Spawn::new(|x| x * 3))
+            .pipe(Fork::new(|x| x * 3))
             .pipe(Await::new())
             .build();
         assert!(result.is_ok());
@@ -67,14 +67,14 @@ mod tests {
     }
 
     #[test]
-    fn with_chained_spawn() {
+    fn with_chained_fork() {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
         let _guard = rt.enter();
         let result = Source::from("test".to_string())
-            .pipe(Spawn::new(|s: String| s.len()))
+            .pipe(Fork::new(|s: String| s.len()))
             .pipe(Await::new())
             .build();
         assert!(result.is_ok());
@@ -89,7 +89,7 @@ mod tests {
             .unwrap();
         let _guard = rt.enter();
         let result = Source::from(10)
-            .pipe(Spawn::new(|x| x + 5))
+            .pipe(Fork::new(|x| x + 5))
             .pipe(Await::default())
             .build();
         assert!(result.is_ok());
@@ -99,14 +99,14 @@ mod tests {
     #[test]
     fn await_pipe_trait() {
         use super::AwaitPipe;
-        use crate::operators::SpawnPipe;
+        use crate::operators::ForkPipe;
 
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
         let _guard = rt.enter();
-        let result = Source::from(5).spawn(|x| x * 3).wait().build();
+        let result = Source::from(5).fork(|x| x * 3).wait().build();
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 15);
     }

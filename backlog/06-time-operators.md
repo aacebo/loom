@@ -1,10 +1,10 @@
-# Phase 13: Time Operators
+# Phase 06: Time Operators
 
 **Status:** PENDING
 
 **Crate:** loom-pipe
 
-**Depends on:** Phase 06 (fork/join, async handling patterns)
+**Depends on:** Phase 04, Phase 05 (result and collection operators)
 
 ## Goal
 

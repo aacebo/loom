@@ -1,10 +1,10 @@
-# Phase 11: Result Operators
+# Phase 04: Result Operators
 
 **Status:** PENDING
 
 **Crate:** loom-pipe
 
-**Depends on:** Phase 06 (fork/join API patterns)
+**Depends on:** Phase 03 (control flow operators)
 
 ## Goal
 
