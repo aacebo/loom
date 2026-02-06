@@ -11,7 +11,7 @@ cargo build --package loom-cli
 ## Usage
 
 ```bash
-loom<command> [options]
+loom-cli <command> [options]
 ```
 
 ## Commands
@@ -21,23 +21,23 @@ loom<command> [options]
 #### `bench run` - Run benchmark against a dataset
 
 ```bash
-loombench run <path> [options]
+loom-cli bench run <path> --config <config> [options]
 
 Options:
-  -t, --threshold <THRESHOLD>  Base threshold for scoring [default: 0.75]
-  -d, --dynamic                Enable dynamic thresholds based on text length
+  -c, --config <CONFIG>  Path to score config file (YAML/JSON/TOML)
+  -v, --verbose          Show detailed per-category and per-label results
 ```
 
 Example:
 ```bash
-loombench run datasets/dataset.json
-loombench run datasets/dataset.json --threshold 0.80 --dynamic
+loom-cli bench run datasets/dataset.json --config configs/score.config.yaml
+loom-cli bench run datasets/dataset.json --config configs/score.config.yaml -v
 ```
 
 #### `bench validate` - Validate a benchmark dataset
 
 ```bash
-loombench validate <path>
+loom-cli bench validate <path>
 ```
 
 Checks for:
@@ -50,7 +50,7 @@ Checks for:
 #### `bench coverage` - Show label coverage for a dataset
 
 ```bash
-loombench coverage <path>
+loom-cli bench coverage <path>
 ```
 
 Displays:
@@ -59,9 +59,29 @@ Displays:
 - Samples per label (target: 3+ each)
 - Missing labels (if any)
 
+#### `bench score` - Extract raw scores for Platt calibration
+
+```bash
+loom-cli bench score <path> --config <config> --output <output>
+
+Options:
+  -c, --config <CONFIG>  Path to score config file (YAML/JSON/TOML)
+  -o, --output <OUTPUT>  Output path for raw scores JSON
+```
+
+#### `bench train` - Train Platt calibration parameters
+
+```bash
+loom-cli bench train <path> --output <output> [options]
+
+Options:
+  -o, --output <OUTPUT>  Output path for trained parameters
+  --code                 Also output Rust code for label.rs
+```
+
 ## Development
 
 Run with cargo:
 ```bash
-cargo run --package loom-cli -- bench run datasets/dataset.json
+cargo run --package loom-cli -- bench run datasets/dataset.json --config configs/score.config.yaml
 ```

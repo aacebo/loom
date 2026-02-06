@@ -1,25 +1,15 @@
-mod category;
-mod coverage;
-mod dataset;
-mod decision;
-mod difficulty;
-pub mod platt;
-mod progress;
-pub mod result;
-mod runner;
-mod sample;
-mod scorer;
-mod validation;
+//! ML-specific benchmarking types.
+//!
+//! This module contains the core ML abstractions:
+//! - `Scorer` trait for text scoring models
+//! - `Decision` enum for accept/reject outcomes
+//! - `platt` submodule for Platt calibration training
+//!
+//! For operational types (datasets, results, runner), see `loom_runtime::bench`.
 
-pub use category::*;
-pub use coverage::*;
-pub use dataset::*;
+mod decision;
+pub mod platt;
+mod scorer;
+
 pub use decision::*;
-pub use difficulty::*;
-pub use platt::*;
-pub use progress::*;
-pub use result::*;
-pub use runner::*;
-pub use sample::*;
 pub use scorer::*;
-pub use validation::*;

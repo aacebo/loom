@@ -1,23 +1,20 @@
-use std::fs;
 use std::path::PathBuf;
 
-use loom::cortex::bench::BenchDataset;
+use loom::io::path::{FilePath, Path};
+use loom::runtime::bench;
 
-pub fn exec(path: &PathBuf) {
+use super::build_runtime;
+
+pub async fn exec(path: &PathBuf) {
     println!("Validating dataset at {:?}...", path);
 
-    let contents = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error reading dataset file: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let runtime = build_runtime();
+    let file_path = Path::File(FilePath::from(path.clone()));
 
-    let dataset: BenchDataset = match serde_json::from_str(&contents) {
+    let dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
         Ok(d) => d,
         Err(e) => {
-            eprintln!("Error parsing dataset: {}", e);
+            eprintln!("Error loading dataset: {}", e);
             std::process::exit(1);
         }
     };

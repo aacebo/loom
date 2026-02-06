@@ -14,7 +14,7 @@ doctest = false
 [features]
 default = ["json"]
 json = ["dep:serde_json"]
-yaml = ["dep:saphyr"]
+yaml = ["dep:saphyr", "dep:serde-saphyr"]
 toml = ["dep:toml"]
 
 [dependencies]
@@ -22,4 +22,5 @@ blake3 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 saphyr = { workspace = true, optional = true }
+serde-saphyr = { workspace = true, optional = true }
 toml = { workspace = true, optional = true }

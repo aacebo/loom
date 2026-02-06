@@ -121,8 +121,9 @@ impl Default for BenchDataset {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::bench::{Category, Difficulty};
+
+    use super::*;
 
     #[test]
     fn dataset_new_creates_empty() {

@@ -2359,6 +2359,7 @@ dependencies = [
  "loom",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2392,6 +2393,7 @@ dependencies = [
  "blake3",
  "saphyr",
  "serde",
+ "serde-saphyr",
  "serde_json",
  "toml",
 ]
@@ -2449,8 +2451,8 @@ dependencies = [
  "loom-io",
  "loom-pipe",
  "loom-sync",
- "saphyr",
  "serde",
+ "serde-saphyr",
  "serde_json",
  "serde_valid",
  "tokio",

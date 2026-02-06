@@ -1,23 +1,21 @@
-use std::fs;
 use std::path::PathBuf;
 
-use loom::cortex::bench::RawScoreExport;
+use loom::core::Format;
+use loom::io::path::{FilePath, Path};
+use loom::runtime::bench;
 
-pub fn exec(path: &PathBuf, output: &PathBuf, generate_rust: bool) {
+use super::build_runtime;
+
+pub async fn exec(path: &PathBuf, output: &PathBuf, generate_rust: bool) {
     println!("Loading raw scores from {:?}...", path);
 
-    let content = match fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error reading file: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let runtime = build_runtime();
+    let file_path = Path::File(FilePath::from(path.clone()));
 
-    let export: RawScoreExport = match serde_json::from_str(&content) {
+    let export: bench::RawScoreExport = match runtime.load("file_system", &file_path).await {
         Ok(e) => e,
         Err(e) => {
-            eprintln!("Error parsing JSON: {}", e);
+            eprintln!("Error loading file: {}", e);
             std::process::exit(1);
         }
     };
@@ -25,7 +23,7 @@ pub fn exec(path: &PathBuf, output: &PathBuf, generate_rust: bool) {
     println!("Loaded {} samples", export.samples.len());
     println!("\nTraining Platt parameters...");
 
-    let result = loom::cortex::bench::train_platt_params(&export);
+    let result = bench::train_platt_params(&export);
 
     // Display results
     println!("\n=== Training Results ===\n");
@@ -50,16 +48,12 @@ pub fn exec(path: &PathBuf, output: &PathBuf, generate_rust: bool) {
         );
     }
 
-    // Write parameters to output file
-    let json = match serde_json::to_string_pretty(&result) {
-        Ok(j) => j,
-        Err(e) => {
-            eprintln!("\nError serializing output: {}", e);
-            std::process::exit(1);
-        }
-    };
-
-    if let Err(e) = fs::write(output, json) {
+    // Write parameters to output file using runtime
+    let output_path = Path::File(FilePath::from(output.clone()));
+    if let Err(e) = runtime
+        .save("file_system", &output_path, &result, Format::Json)
+        .await
+    {
         eprintln!("\nError writing output file: {}", e);
         std::process::exit(1);
     }
@@ -67,7 +61,7 @@ pub fn exec(path: &PathBuf, output: &PathBuf, generate_rust: bool) {
     println!("\nParameters written to {:?}", output);
 
     if generate_rust {
-        let rust_code = loom::cortex::bench::generate_rust_code(&result);
+        let rust_code = bench::generate_rust_code(&result);
         println!("\n=== Rust Code ===\n");
         println!("{}", rust_code);
     }

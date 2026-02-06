@@ -1,9 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use super::{
-    BenchDataset, BenchResult, BenchSample, Decision, LabelResult, Progress, RawScoreExport,
-    SampleResult, SampleScores, Scorer, ScorerOutput,
+    BenchDataset, BenchResult, BenchSample, Decision, LabelResult, Progress, SampleResult,
 };
+
+// Import ML types from cortex
+pub use loom_cortex::bench::platt::{RawScoreExport, SampleScores};
+pub use loom_cortex::bench::{Scorer, ScorerOutput};
 
 /// Run benchmarks on a dataset using a scorer.
 pub fn run<S: Scorer>(dataset: &BenchDataset, scorer: &S) -> BenchResult {
@@ -47,7 +50,6 @@ pub fn run_with_progress<S: Scorer>(
         result.sample_results.push(sample_result);
     }
 
-    result.compute_metrics();
     result
 }
 

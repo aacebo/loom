@@ -1,7 +1,9 @@
+use serde::{Deserialize, Serialize};
+
 use crate::bench::Decision;
 
 /// Result for a single sample.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SampleResult {
     pub id: String,
     pub expected_decision: Decision,

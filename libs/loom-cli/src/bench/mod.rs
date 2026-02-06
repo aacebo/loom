@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
+use loom::runtime::{FileSystemSource, JsonCodec, Runtime, TomlCodec, YamlCodec};
 
 mod cov;
 mod run;
@@ -8,12 +9,25 @@ mod score;
 mod train;
 mod validate;
 
+/// Build a Runtime configured with standard sources and codecs.
+pub fn build_runtime() -> Runtime {
+    Runtime::new()
+        .source(FileSystemSource::builder().build())
+        .codec(JsonCodec::new())
+        .codec(YamlCodec::new())
+        .codec(TomlCodec::new())
+        .build()
+}
+
 #[derive(Subcommand)]
 pub enum BenchAction {
     /// Run benchmark against a dataset
     Run {
         /// Path to the benchmark dataset JSON file
         path: PathBuf,
+        /// Path to score config file (YAML/JSON/TOML)
+        #[arg(short, long)]
+        config: PathBuf,
         /// Show detailed per-category and per-label results
         #[arg(short, long)]
         verbose: bool,
@@ -32,6 +46,9 @@ pub enum BenchAction {
     Score {
         /// Path to the benchmark dataset JSON file
         path: PathBuf,
+        /// Path to score config file (YAML/JSON/TOML)
+        #[arg(short, long)]
+        config: PathBuf,
         /// Output path for raw scores JSON
         #[arg(short, long)]
         output: PathBuf,
@@ -49,12 +66,20 @@ pub enum BenchAction {
     },
 }
 
-pub fn run(action: BenchAction) {
+pub async fn run(action: BenchAction) {
     match action {
-        BenchAction::Run { path, verbose } => run::exec(&path, verbose),
-        BenchAction::Validate { path } => validate::exec(&path),
-        BenchAction::Coverage { path } => cov::exec(&path),
-        BenchAction::Score { path, output } => score::exec(&path, &output),
-        BenchAction::Train { path, output, code } => train::exec(&path, &output, code),
+        BenchAction::Run {
+            path,
+            config,
+            verbose,
+        } => run::exec(&path, &config, verbose).await,
+        BenchAction::Validate { path } => validate::exec(&path).await,
+        BenchAction::Coverage { path } => cov::exec(&path).await,
+        BenchAction::Score {
+            path,
+            config,
+            output,
+        } => score::exec(&path, &config, &output).await,
+        BenchAction::Train { path, output, code } => train::exec(&path, &output, code).await,
     }
 }

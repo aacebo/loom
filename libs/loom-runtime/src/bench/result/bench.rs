@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-use super::{CategoryResult, LabelResult, SampleResult};
+use serde::{Deserialize, Serialize};
+
+use super::{
+    BenchMetrics, CategoryMetrics, CategoryResult, LabelMetrics, LabelResult, SampleResult,
+};
 use crate::bench::Category;
 
-/// Overall benchmark results.
-#[derive(Debug, Clone)]
+/// Raw benchmark results (counts only).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchResult {
     pub total: usize,
     pub correct: usize,
-    pub accuracy: f32,
-    pub precision: f32,
-    pub recall: f32,
-    pub f1: f32,
     pub per_category: HashMap<Category, CategoryResult>,
     pub per_label: HashMap<String, LabelResult>,
     pub sample_results: Vec<SampleResult>,
@@ -23,28 +23,28 @@ impl BenchResult {
         Self {
             total: 0,
             correct: 0,
-            accuracy: 0.0,
-            precision: 0.0,
-            recall: 0.0,
-            f1: 0.0,
             per_category: HashMap::new(),
             per_label: HashMap::new(),
             sample_results: Vec::new(),
         }
     }
 
-    /// Compute metrics from the collected data.
-    pub fn compute_metrics(&mut self) {
+    /// Compute metrics from the collected counts.
+    pub fn metrics(&self) -> BenchMetrics {
+        let mut metrics = BenchMetrics::default();
+
         // Overall accuracy
         if self.total > 0 {
-            self.accuracy = self.correct as f32 / self.total as f32;
+            metrics.accuracy = self.correct as f32 / self.total as f32;
         }
 
         // Per-category accuracy
-        for result in self.per_category.values_mut() {
+        for (category, result) in &self.per_category {
+            let mut cat_metrics = CategoryMetrics::default();
             if result.total > 0 {
-                result.accuracy = result.correct as f32 / result.total as f32;
+                cat_metrics.accuracy = result.correct as f32 / result.total as f32;
             }
+            metrics.per_category.insert(*category, cat_metrics);
         }
 
         // Per-label precision/recall/F1
@@ -52,41 +52,47 @@ impl BenchResult {
         let mut total_recall = 0.0;
         let mut label_count = 0;
 
-        for result in self.per_label.values_mut() {
+        for (label, result) in &self.per_label {
+            let mut label_metrics = LabelMetrics::default();
+
             // Precision = TP / (TP + FP)
             let tp_fp = result.true_positives + result.false_positives;
             if tp_fp > 0 {
-                result.precision = result.true_positives as f32 / tp_fp as f32;
+                label_metrics.precision = result.true_positives as f32 / tp_fp as f32;
             }
 
             // Recall = TP / (TP + FN)
             let tp_fn = result.true_positives + result.false_negatives;
             if tp_fn > 0 {
-                result.recall = result.true_positives as f32 / tp_fn as f32;
+                label_metrics.recall = result.true_positives as f32 / tp_fn as f32;
             }
 
             // F1 = 2 * (precision * recall) / (precision + recall)
-            let pr_sum = result.precision + result.recall;
+            let pr_sum = label_metrics.precision + label_metrics.recall;
             if pr_sum > 0.0 {
-                result.f1 = 2.0 * result.precision * result.recall / pr_sum;
+                label_metrics.f1 = 2.0 * label_metrics.precision * label_metrics.recall / pr_sum;
             }
 
             if result.expected_count > 0 {
-                total_precision += result.precision;
-                total_recall += result.recall;
+                total_precision += label_metrics.precision;
+                total_recall += label_metrics.recall;
                 label_count += 1;
             }
+
+            metrics.per_label.insert(label.clone(), label_metrics);
         }
 
         // Macro-averaged precision/recall/F1
         if label_count > 0 {
-            self.precision = total_precision / label_count as f32;
-            self.recall = total_recall / label_count as f32;
-            let pr_sum = self.precision + self.recall;
+            metrics.precision = total_precision / label_count as f32;
+            metrics.recall = total_recall / label_count as f32;
+            let pr_sum = metrics.precision + metrics.recall;
             if pr_sum > 0.0 {
-                self.f1 = 2.0 * self.precision * self.recall / pr_sum;
+                metrics.f1 = 2.0 * metrics.precision * metrics.recall / pr_sum;
             }
         }
+
+        metrics
     }
 }
 
@@ -105,8 +111,8 @@ mod tests {
         let mut result = BenchResult::new();
         result.total = 10;
         result.correct = 8;
-        result.compute_metrics();
-        assert!((result.accuracy - 0.8).abs() < 0.001);
+        let metrics = result.metrics();
+        assert!((metrics.accuracy - 0.8).abs() < 0.001);
     }
 
     #[test]
@@ -117,12 +123,11 @@ mod tests {
             CategoryResult {
                 total: 5,
                 correct: 4,
-                accuracy: 0.0,
             },
         );
-        result.compute_metrics();
+        let metrics = result.metrics();
 
-        let cat = result.per_category.get(&Category::Task).unwrap();
+        let cat = metrics.per_category.get(&Category::Task).unwrap();
         assert!((cat.accuracy - 0.8).abs() < 0.001);
     }
 
@@ -137,12 +142,11 @@ mod tests {
                 true_positives: 6,
                 false_positives: 2,
                 false_negatives: 4,
-                ..Default::default()
             },
         );
-        result.compute_metrics();
+        let metrics = result.metrics();
 
-        let label = result.per_label.get("Task").unwrap();
+        let label = metrics.per_label.get("Task").unwrap();
         assert!((label.precision - 0.75).abs() < 0.001);
         assert!((label.recall - 0.6).abs() < 0.001);
         assert!((label.f1 - 0.667).abs() < 0.01);

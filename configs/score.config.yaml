@@ -2,10 +2,10 @@
 # Root configuration for the scoring engine
 
 # Model configuration for zero-shot classification
-# DeBERTa-v2 provides best accuracy for NLI-based zero-shot tasks
+# BART is the default and most stable model for zero-shot in rust-bert
 model:
   type: zero_shot_classification
-  model: DebertaV2
+  model: Bart
 
 threshold: 0.75
 top_k: 2
