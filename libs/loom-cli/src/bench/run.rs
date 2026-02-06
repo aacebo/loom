@@ -18,7 +18,6 @@ pub async fn exec(
 
     let runtime = build_runtime();
     let file_path = Path::File(FilePath::from(path.clone()));
-
     let dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
         Ok(d) => d,
         Err(e) => {
@@ -62,8 +61,8 @@ pub async fn exec(
         );
     }
 
-    let total = dataset.samples.len();
     let scorer = Arc::new(Mutex::new(scorer));
+    let total = dataset.samples.len();
     let config = bench::AsyncRunConfig {
         concurrency,
         batch_size: Some(batch_size),

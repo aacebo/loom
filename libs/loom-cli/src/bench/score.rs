@@ -19,7 +19,6 @@ pub async fn exec(
 
     let runtime = build_runtime();
     let file_path = Path::File(FilePath::from(path.clone()));
-
     let dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
         Ok(d) => d,
         Err(e) => {
