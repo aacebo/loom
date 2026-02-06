@@ -2509,7 +2509,6 @@ dependencies = [
  "async-trait",
  "chrono",
  "console",
- "loom-config",
  "rust-bert",
  "serde",
  "tch",

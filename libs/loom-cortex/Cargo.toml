@@ -14,7 +14,6 @@ doctest = false
 [dependencies]
 async-trait = { workspace = true }
 chrono = { workspace = true }
-loom-config = { workspace = true }
 serde = { workspace = true }
 tch = { version = "0.17" }
 rust-bert = { version = "0.23" }
