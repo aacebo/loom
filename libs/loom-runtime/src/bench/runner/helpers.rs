@@ -25,6 +25,35 @@ pub fn evaluate_sample<S: Scorer>(sample: &BenchSample, scorer: &S) -> SampleRes
     }
 }
 
+/// Evaluate a single sample and capture raw scores.
+///
+/// Returns both the SampleResult and a map of label -> raw_score.
+pub fn evaluate_sample_with_scores<S: Scorer>(
+    sample: &BenchSample,
+    scorer: &S,
+) -> (SampleResult, HashMap<String, f32>) {
+    let (actual_decision, score, detected_labels, raw_scores) = match scorer.score(&sample.text) {
+        Ok(output) => {
+            let detected = output.detected_labels();
+            let raw: HashMap<String, f32> = output.labels().into_iter().collect();
+            (output.decision(), output.score(), detected, raw)
+        }
+        Err(_) => (Decision::Reject, 0.0, vec![], HashMap::new()),
+    };
+
+    let result = SampleResult {
+        id: sample.id.clone(),
+        expected_decision: sample.expected_decision,
+        actual_decision,
+        correct: actual_decision == sample.expected_decision,
+        score,
+        expected_labels: sample.expected_labels.clone(),
+        detected_labels,
+    };
+
+    (result, raw_scores)
+}
+
 /// Evaluate a batch output for a sample.
 pub fn evaluate_batch_output<O: ScorerOutput>(sample: &BenchSample, output: O) -> SampleResult {
     let detected_labels = output.detected_labels();
@@ -40,6 +69,31 @@ pub fn evaluate_batch_output<O: ScorerOutput>(sample: &BenchSample, output: O) -
         expected_labels: sample.expected_labels.clone(),
         detected_labels,
     }
+}
+
+/// Evaluate a batch output for a sample and capture raw scores.
+///
+/// Returns both the SampleResult and a map of label -> raw_score.
+pub fn evaluate_batch_output_with_scores<O: ScorerOutput>(
+    sample: &BenchSample,
+    output: O,
+) -> (SampleResult, HashMap<String, f32>) {
+    let detected_labels = output.detected_labels();
+    let actual_decision = output.decision();
+    let score = output.score();
+    let raw_scores: HashMap<String, f32> = output.labels().into_iter().collect();
+
+    let result = SampleResult {
+        id: sample.id.clone(),
+        expected_decision: sample.expected_decision,
+        actual_decision,
+        correct: actual_decision == sample.expected_decision,
+        score,
+        expected_labels: sample.expected_labels.clone(),
+        detected_labels,
+    };
+
+    (result, raw_scores)
 }
 
 /// Update per-label metrics based on sample results.
@@ -89,7 +143,7 @@ pub(crate) fn build_result(samples_and_results: Vec<(BenchSample, SampleResult)>
 
         let cat_result = result
             .per_category
-            .entry(sample.primary_category)
+            .entry(sample.primary_category.clone())
             .or_default();
         cat_result.total += 1;
         if sample_result.correct {
@@ -101,4 +155,36 @@ pub(crate) fn build_result(samples_and_results: Vec<(BenchSample, SampleResult)>
     }
 
     result
+}
+
+/// Build a BenchResult from sample results with raw scores.
+///
+/// Returns both the BenchResult and a map of sample_id -> label -> raw_score.
+pub(crate) fn build_result_with_scores(
+    samples_and_results: Vec<(BenchSample, SampleResult, HashMap<String, f32>)>,
+) -> (BenchResult, HashMap<String, HashMap<String, f32>>) {
+    let mut result = BenchResult::new();
+    let mut raw_scores_map: HashMap<String, HashMap<String, f32>> = HashMap::new();
+    result.total = samples_and_results.len();
+
+    for (sample, sample_result, raw_scores) in samples_and_results {
+        if sample_result.correct {
+            result.correct += 1;
+        }
+
+        let cat_result = result
+            .per_category
+            .entry(sample.primary_category.clone())
+            .or_default();
+        cat_result.total += 1;
+        if sample_result.correct {
+            cat_result.correct += 1;
+        }
+
+        update_label_metrics(&mut result.per_label, &sample, &sample_result);
+        raw_scores_map.insert(sample_result.id.clone(), raw_scores);
+        result.sample_results.push(sample_result);
+    }
+
+    (result, raw_scores_map)
 }

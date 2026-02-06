@@ -30,8 +30,8 @@ Options:
 
 Example:
 ```bash
-loom-cli bench run datasets/dataset.json --config configs/score.config.yaml
-loom-cli bench run datasets/dataset.json --config configs/score.config.yaml -v
+loom-cli bench run datasets/dataset.json -c configs/basic.config.yaml
+loom-cli bench run datasets/dataset.json -c configs/basic.config.yaml -v
 ```
 
 #### `bench validate` - Validate a benchmark dataset
@@ -83,5 +83,5 @@ Options:
 
 Run with cargo:
 ```bash
-cargo run --package loom-cli -- bench run datasets/dataset.json --config configs/score.config.yaml
+cargo run --package loom-cli -- bench run datasets/dataset.json -c configs/basic.config.yaml
 ```

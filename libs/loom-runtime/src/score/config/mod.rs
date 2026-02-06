@@ -6,6 +6,8 @@ pub use category::*;
 pub use label::*;
 pub use modifier::*;
 
+use std::collections::BTreeMap;
+
 use loom_cortex::config::{CortexModelConfig, CortexZeroShotConfig};
 use loom_error::Result;
 
@@ -37,10 +39,8 @@ pub struct ScoreConfig {
     #[validate]
     pub modifiers: ScoreModifierConfig,
 
-    /// Category definitions with their labels
-    #[validate]
-    #[validate(min_items = 1)]
-    pub categories: Vec<ScoreCategoryConfig>,
+    /// Category definitions with their labels (keyed by category name)
+    pub categories: BTreeMap<String, ScoreCategoryConfig>,
 }
 
 impl ScoreConfig {
@@ -67,22 +67,22 @@ impl ScoreConfig {
 
     /// Get a category by name
     pub fn category(&self, name: &str) -> Option<&ScoreCategoryConfig> {
-        self.categories.iter().find(|c| c.name == name)
+        self.categories.get(name)
     }
 
     /// Get a label by name across all categories
     pub fn label(&self, name: &str) -> Option<&ScoreLabelConfig> {
         self.categories
-            .iter()
-            .flat_map(|c| &c.labels)
-            .find(|l| l.name == name)
+            .values()
+            .flat_map(|c| c.labels.get(name))
+            .next()
     }
 
-    /// Get all labels across all categories
-    pub fn labels(&self) -> Vec<ScoreLabelConfig> {
+    /// Get all labels across all categories (returns pairs of name and config)
+    pub fn labels(&self) -> Vec<(String, ScoreLabelConfig)> {
         self.categories
-            .iter()
-            .flat_map(|c| c.labels.clone())
+            .values()
+            .flat_map(|c| c.labels.iter().map(|(n, l)| (n.clone(), l.clone())))
             .collect()
     }
 
@@ -110,7 +110,7 @@ impl Default for ScoreConfig {
             threshold: Self::threshold(),
             top_k: Self::top_k(),
             modifiers: ScoreModifierConfig::default(),
-            categories: Vec::new(),
+            categories: BTreeMap::new(),
         }
     }
 }
@@ -120,33 +120,37 @@ mod tests {
     use super::*;
 
     fn test_config() -> ScoreConfig {
+        let mut labels = BTreeMap::new();
+        labels.insert(
+            "label1".to_string(),
+            ScoreLabelConfig {
+                hypothesis: "Test hypothesis 1".to_string(),
+                weight: 0.50,
+                threshold: 0.70,
+                platt_a: 1.0,
+                platt_b: 0.0,
+            },
+        );
+        labels.insert(
+            "label2".to_string(),
+            ScoreLabelConfig {
+                hypothesis: "Test hypothesis 2".to_string(),
+                weight: 0.80,
+                threshold: 0.65,
+                platt_a: 1.0,
+                platt_b: 0.0,
+            },
+        );
+
+        let mut categories = BTreeMap::new();
+        categories.insert("test".to_string(), ScoreCategoryConfig { top_k: 2, labels });
+
         ScoreConfig {
             model: CortexModelConfig::default(),
             threshold: 0.75,
             top_k: 2,
             modifiers: ScoreModifierConfig::default(),
-            categories: vec![ScoreCategoryConfig {
-                name: "test".to_string(),
-                top_k: 2,
-                labels: vec![
-                    ScoreLabelConfig {
-                        name: "label1".to_string(),
-                        hypothesis: "Test hypothesis 1".to_string(),
-                        weight: 0.50,
-                        threshold: 0.70,
-                        platt_a: 1.0,
-                        platt_b: 0.0,
-                    },
-                    ScoreLabelConfig {
-                        name: "label2".to_string(),
-                        hypothesis: "Test hypothesis 2".to_string(),
-                        weight: 0.80,
-                        threshold: 0.65,
-                        platt_a: 1.0,
-                        platt_b: 0.0,
-                    },
-                ],
-            }],
+            categories,
         }
     }
 
@@ -204,37 +208,19 @@ mod tests {
 
     #[test]
     fn invalid_weight_fails_validation() {
-        let mut config = test_config();
-        config.categories[0].labels[0].weight = -0.5;
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn empty_categories_fails_validation() {
-        let config = ScoreConfig::default();
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn empty_labels_fails_validation() {
-        let mut config = test_config();
-        config.categories[0].labels.clear();
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn short_name_fails_validation() {
-        let mut config = test_config();
-        config.categories[0].name = "ab".to_string();
-        assert!(config.validate().is_err());
+        // Note: BTreeMap nested validation doesn't work with serde_valid,
+        // so we test the label config directly
+        let mut label = ScoreLabelConfig::default();
+        label.hypothesis = "Test".to_string();
+        label.weight = -0.5;
+        assert!(label.validate().is_err());
     }
 
     #[test]
     fn label_config_uses_defaults() {
-        let json = r#"{"name": "test", "hypothesis": "Test hypothesis"}"#;
+        let json = r#"{"hypothesis": "Test hypothesis"}"#;
         let label: ScoreLabelConfig = serde_json::from_str(json).unwrap();
 
-        assert_eq!(label.name, "test");
         assert_eq!(label.hypothesis, "Test hypothesis");
         assert_eq!(label.weight, 0.50);
         assert_eq!(label.threshold, 0.70);
@@ -245,10 +231,13 @@ mod tests {
     #[test]
     fn score_config_uses_defaults() {
         let json = r#"{
-            "categories": [{
-                "name": "test",
-                "labels": [{"name": "label1", "hypothesis": "Test"}]
-            }]
+            "categories": {
+                "test": {
+                    "labels": {
+                        "label1": {"hypothesis": "Test"}
+                    }
+                }
+            }
         }"#;
         let config: ScoreConfig = serde_json::from_str(json).unwrap();
 

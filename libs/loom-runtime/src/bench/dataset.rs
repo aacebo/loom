@@ -29,10 +29,28 @@ impl BenchDataset {
 
     /// Validate the dataset with optional label validation.
     pub fn validate_with_labels(&self, valid_labels: Option<&[String]>) -> Vec<ValidationError> {
+        self.validate_with_config(None, valid_labels)
+    }
+
+    /// Validate the dataset with optional category and label validation.
+    ///
+    /// This is the most comprehensive validation method that checks:
+    /// - Duplicate sample IDs
+    /// - Empty text
+    /// - Missing expected labels
+    /// - Invalid categories (if valid_categories is provided)
+    /// - Invalid labels (if valid_labels is provided)
+    pub fn validate_with_config(
+        &self,
+        valid_categories: Option<&[String]>,
+        valid_labels: Option<&[String]>,
+    ) -> Vec<ValidationError> {
         let mut errors = Vec::new();
         let mut seen_ids = HashSet::new();
 
-        let valid_set: Option<HashSet<&String>> =
+        let valid_category_set: Option<HashSet<&String>> =
+            valid_categories.map(|cats| cats.iter().collect());
+        let valid_label_set: Option<HashSet<&String>> =
             valid_labels.map(|labels| labels.iter().collect());
 
         for sample in &self.samples {
@@ -57,7 +75,18 @@ impl BenchDataset {
                 });
             }
 
-            if let Some(ref valid) = valid_set {
+            // Validate category against config
+            if let Some(ref valid) = valid_category_set {
+                if !valid.contains(&sample.primary_category) {
+                    errors.push(ValidationError {
+                        sample_id: sample.id.clone(),
+                        message: format!("Invalid category: '{}'", sample.primary_category),
+                    });
+                }
+            }
+
+            // Validate labels against config
+            if let Some(ref valid) = valid_label_set {
                 for label in &sample.expected_labels {
                     if !valid.contains(label) {
                         errors.push(ValidationError {
@@ -87,7 +116,7 @@ impl BenchDataset {
         for sample in &self.samples {
             *report
                 .samples_by_category
-                .entry(sample.primary_category)
+                .entry(sample.primary_category.clone())
                 .or_insert(0) += 1;
 
             for label in &sample.expected_labels {
@@ -121,7 +150,7 @@ impl Default for BenchDataset {
 
 #[cfg(test)]
 mod tests {
-    use crate::bench::{Category, Difficulty};
+    use crate::bench::Difficulty;
 
     use super::*;
 
@@ -141,9 +170,10 @@ mod tests {
             context: None,
             expected_decision: Decision::Accept,
             expected_labels: vec!["positive".to_string()],
-            primary_category: Category::Emotional,
+            primary_category: "emotional".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
         dataset.samples.push(BenchSample {
             id: "test-001".to_string(),
@@ -151,9 +181,10 @@ mod tests {
             context: None,
             expected_decision: Decision::Accept,
             expected_labels: vec!["positive".to_string()],
-            primary_category: Category::Emotional,
+            primary_category: "emotional".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
 
         let errors = dataset.validate();
@@ -170,9 +201,10 @@ mod tests {
             context: None,
             expected_decision: Decision::Accept,
             expected_labels: vec!["positive".to_string()],
-            primary_category: Category::Emotional,
+            primary_category: "emotional".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
 
         let errors = dataset.validate();
@@ -188,14 +220,39 @@ mod tests {
             context: None,
             expected_decision: Decision::Accept,
             expected_labels: vec!["NotARealLabel".to_string()],
-            primary_category: Category::Emotional,
+            primary_category: "emotional".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
 
         let valid_labels = vec!["positive".to_string(), "negative".to_string()];
         let errors = dataset.validate_with_labels(Some(&valid_labels));
         assert!(errors.iter().any(|e| e.message.contains("Invalid label")));
+    }
+
+    #[test]
+    fn dataset_validate_catches_invalid_categories() {
+        let mut dataset = BenchDataset::new();
+        dataset.samples.push(BenchSample {
+            id: "test-001".to_string(),
+            text: "Hello".to_string(),
+            context: None,
+            expected_decision: Decision::Accept,
+            expected_labels: vec!["positive".to_string()],
+            primary_category: "unknown_category".to_string(),
+            difficulty: Difficulty::Easy,
+            notes: None,
+            metadata: None,
+        });
+
+        let valid_categories = vec!["sentiment".to_string(), "emotion".to_string()];
+        let errors = dataset.validate_with_config(Some(&valid_categories), None);
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.message.contains("Invalid category"))
+        );
     }
 
     #[test]
@@ -207,9 +264,10 @@ mod tests {
             context: None,
             expected_decision: Decision::Accept,
             expected_labels: vec!["positive".to_string()],
-            primary_category: Category::Emotional,
+            primary_category: "emotional".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
         dataset.samples.push(BenchSample {
             id: "test-002".to_string(),
@@ -217,9 +275,10 @@ mod tests {
             context: None,
             expected_decision: Decision::Reject,
             expected_labels: vec!["phatic".to_string()],
-            primary_category: Category::Phatic,
+            primary_category: "phatic".to_string(),
             difficulty: Difficulty::Easy,
             notes: None,
+            metadata: None,
         });
 
         let coverage = dataset.coverage();

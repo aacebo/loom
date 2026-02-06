@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::bench::Category;
-
 /// Computed metrics for overall benchmark performance.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct BenchMetrics {
@@ -11,7 +9,7 @@ pub struct BenchMetrics {
     pub precision: f32,
     pub recall: f32,
     pub f1: f32,
-    pub per_category: HashMap<Category, CategoryMetrics>,
+    pub per_category: HashMap<String, CategoryMetrics>,
     pub per_label: HashMap<String, LabelMetrics>,
 }
 

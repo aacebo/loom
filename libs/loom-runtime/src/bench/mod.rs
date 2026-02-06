@@ -28,7 +28,6 @@
 //! ```
 
 // Operational types - owned by runtime
-mod category;
 mod coverage;
 mod dataset;
 mod difficulty;
@@ -39,7 +38,6 @@ mod sample;
 mod validation;
 
 // Public exports - operational types
-pub use category::*;
 pub use coverage::*;
 pub use dataset::*;
 pub use difficulty::*;

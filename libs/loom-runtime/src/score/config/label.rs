@@ -2,12 +2,9 @@ use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 
 /// Complete label definition
+/// Note: Label name is the key in the parent BTreeMap
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct ScoreLabelConfig {
-    /// Label identifier (e.g., "positive", "task", "joy")
-    #[validate(min_length = 3)]
-    pub name: String,
-
     /// Hypothesis text for zero-shot classification
     #[validate(min_length = 1)]
     pub hypothesis: String,
@@ -50,7 +47,6 @@ impl ScoreLabelConfig {
 impl Default for ScoreLabelConfig {
     fn default() -> Self {
         Self {
-            name: String::new(),
             hypothesis: String::new(),
             weight: Self::weight(),
             threshold: Self::threshold(),

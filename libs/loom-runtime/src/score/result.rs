@@ -256,7 +256,6 @@ mod tests {
     #[test]
     fn score_label_applies_calibration() {
         let config = ScoreLabelConfig {
-            name: "positive".to_string(),
             hypothesis: "test".to_string(),
             weight: 0.30,
             threshold: 0.70,
@@ -279,7 +278,6 @@ mod tests {
     #[test]
     fn score_label_below_threshold_zeroes_score() {
         let config = ScoreLabelConfig {
-            name: "positive".to_string(),
             hypothesis: "test".to_string(),
             weight: 0.30,
             threshold: 0.70,
@@ -298,7 +296,6 @@ mod tests {
     #[test]
     fn score_label_at_threshold_passes() {
         let config = ScoreLabelConfig {
-            name: "task".to_string(),
             hypothesis: "test".to_string(),
             weight: 1.00,
             threshold: 0.65,

@@ -5,14 +5,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     BenchMetrics, CategoryMetrics, CategoryResult, LabelMetrics, LabelResult, SampleResult,
 };
-use crate::bench::Category;
 
 /// Raw benchmark results (counts only).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchResult {
     pub total: usize,
     pub correct: usize,
-    pub per_category: HashMap<Category, CategoryResult>,
+    pub per_category: HashMap<String, CategoryResult>,
     pub per_label: HashMap<String, LabelResult>,
     pub sample_results: Vec<SampleResult>,
 }
@@ -44,7 +43,7 @@ impl BenchResult {
             if result.total > 0 {
                 cat_metrics.accuracy = result.correct as f32 / result.total as f32;
             }
-            metrics.per_category.insert(*category, cat_metrics);
+            metrics.per_category.insert(category.clone(), cat_metrics);
         }
 
         // Per-label precision/recall/F1
@@ -119,7 +118,7 @@ mod tests {
     fn category_result_computes_accuracy() {
         let mut result = BenchResult::new();
         result.per_category.insert(
-            Category::Task,
+            "task".to_string(),
             CategoryResult {
                 total: 5,
                 correct: 4,
@@ -127,7 +126,7 @@ mod tests {
         );
         let metrics = result.metrics();
 
-        let cat = metrics.per_category.get(&Category::Task).unwrap();
+        let cat = metrics.per_category.get("task").unwrap();
         assert!((cat.accuracy - 0.8).abs() < 0.001);
     }
 

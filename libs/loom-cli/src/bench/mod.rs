@@ -25,23 +25,32 @@ pub enum BenchAction {
     Run {
         /// Path to the benchmark dataset JSON file
         path: PathBuf,
-        /// Path to score config file (YAML/JSON/TOML)
+        /// Path to config file (YAML/JSON/TOML)
         #[arg(short, long)]
         config: PathBuf,
         /// Show detailed per-category and per-label results
         #[arg(short, long)]
         verbose: bool,
-        /// Number of parallel inference workers (default: 4)
-        #[arg(long, default_value = "4")]
-        concurrency: usize,
-        /// Batch size for ML inference (default: 8, use 1 for per-sample)
-        #[arg(long, default_value = "8")]
-        batch_size: usize,
+        /// Number of parallel inference workers (overrides config)
+        #[arg(long)]
+        concurrency: Option<usize>,
+        /// Batch size for ML inference (overrides config)
+        #[arg(long)]
+        batch_size: Option<usize>,
+        /// Fail if samples have categories/labels not in config (overrides config)
+        #[arg(long)]
+        strict: Option<bool>,
     },
     /// Validate a benchmark dataset
     Validate {
         /// Path to the benchmark dataset JSON file
         path: PathBuf,
+        /// Path to score config file (YAML/JSON/TOML) for category/label validation
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+        /// Fail if samples have categories/labels not in config (default: report errors)
+        #[arg(long)]
+        strict: bool,
     },
     /// Show label coverage for a dataset
     Coverage {
@@ -52,18 +61,21 @@ pub enum BenchAction {
     Score {
         /// Path to the benchmark dataset JSON file
         path: PathBuf,
-        /// Path to score config file (YAML/JSON/TOML)
+        /// Path to config file (YAML/JSON/TOML)
         #[arg(short, long)]
         config: PathBuf,
-        /// Output path for raw scores JSON
+        /// Output path for results (overrides config)
         #[arg(short, long)]
-        output: PathBuf,
-        /// Number of parallel inference workers (default: 4)
-        #[arg(long, default_value = "4")]
-        concurrency: usize,
-        /// Batch size for ML inference (default: 8, use 1 for per-sample)
-        #[arg(long, default_value = "8")]
-        batch_size: usize,
+        output: Option<PathBuf>,
+        /// Number of parallel inference workers (overrides config)
+        #[arg(long)]
+        concurrency: Option<usize>,
+        /// Batch size for ML inference (overrides config)
+        #[arg(long)]
+        batch_size: Option<usize>,
+        /// Fail if samples have categories/labels not in config (overrides config)
+        #[arg(long)]
+        strict: Option<bool>,
     },
     /// Train Platt calibration parameters from raw scores
     Train {
@@ -86,8 +98,13 @@ pub async fn run(action: BenchAction) {
             verbose,
             concurrency,
             batch_size,
-        } => run::exec(&path, &config, verbose, concurrency, batch_size).await,
-        BenchAction::Validate { path } => validate::exec(&path).await,
+            strict,
+        } => run::exec(&path, &config, verbose, concurrency, batch_size, strict).await,
+        BenchAction::Validate {
+            path,
+            config,
+            strict,
+        } => validate::exec(&path, config.as_ref(), strict).await,
         BenchAction::Coverage { path } => cov::exec(&path).await,
         BenchAction::Score {
             path,
@@ -95,7 +112,18 @@ pub async fn run(action: BenchAction) {
             output,
             concurrency,
             batch_size,
-        } => score::exec(&path, &config, &output, concurrency, batch_size).await,
+            strict,
+        } => {
+            score::exec(
+                &path,
+                &config,
+                output.as_ref(),
+                concurrency,
+                batch_size,
+                strict,
+            )
+            .await
+        }
         BenchAction::Train { path, output, code } => train::exec(&path, &output, code).await,
     }
 }

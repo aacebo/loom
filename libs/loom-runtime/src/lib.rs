@@ -1,7 +1,9 @@
 pub mod bench;
+mod config;
 mod context;
 pub mod score;
 
+pub use config::*;
 pub use context::*;
 
 use std::sync::Arc;

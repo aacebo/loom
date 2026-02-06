@@ -16,6 +16,9 @@ mod sync;
 pub use r#async::*;
 pub use batch::*;
 pub use config::*;
-pub use helpers::{evaluate_batch_output, evaluate_sample};
+pub use helpers::{
+    evaluate_batch_output, evaluate_batch_output_with_scores, evaluate_sample,
+    evaluate_sample_with_scores,
+};
 pub use instrumented::*;
 pub use sync::*;

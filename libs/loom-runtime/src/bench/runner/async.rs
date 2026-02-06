@@ -6,8 +6,10 @@ use loom_cortex::bench::platt::{RawScoreExport, SampleScores};
 use loom_cortex::bench::{Scorer, ScorerOutput};
 
 use super::config::AsyncRunConfig;
-use super::helpers::{build_result, evaluate_sample};
-use crate::bench::{BenchDataset, BenchResult, Progress};
+use super::helpers::{
+    build_result, build_result_with_scores, evaluate_sample, evaluate_sample_with_scores,
+};
+use crate::bench::{BenchDataset, BenchResult, BenchSample, Progress, SampleResult};
 
 /// Run benchmarks asynchronously on a blocking thread pool.
 ///
@@ -146,4 +148,69 @@ where
     RawScoreExport {
         samples: sample_scores,
     }
+}
+
+/// Run benchmarks asynchronously and capture raw scores.
+///
+/// Returns both the BenchResult and a map of sample_id -> label -> raw_score.
+pub async fn run_async_with_scores<S>(
+    dataset: &BenchDataset,
+    scorer: Arc<Mutex<S>>,
+) -> (BenchResult, HashMap<String, HashMap<String, f32>>)
+where
+    S: Scorer + Send + 'static,
+    S::Output: Send + 'static,
+    S::Error: Send + 'static,
+{
+    run_async_with_scores_config(dataset, scorer, AsyncRunConfig::default(), |_| {}).await
+}
+
+/// Run benchmarks asynchronously with config and capture raw scores.
+///
+/// Returns both the BenchResult and a map of sample_id -> label -> raw_score.
+pub async fn run_async_with_scores_config<S, F>(
+    dataset: &BenchDataset,
+    scorer: Arc<Mutex<S>>,
+    _config: AsyncRunConfig,
+    on_progress: F,
+) -> (BenchResult, HashMap<String, HashMap<String, f32>>)
+where
+    S: Scorer + Send + 'static,
+    S::Output: Send + 'static,
+    S::Error: Send + 'static,
+    F: Fn(Progress) + Send + Sync + 'static,
+{
+    let total = dataset.samples.len();
+    let on_progress = Arc::new(on_progress);
+
+    // Process samples sequentially via spawn_blocking (Mutex serializes access)
+    let sample_results: Vec<(BenchSample, SampleResult, HashMap<String, f32>)> =
+        stream::iter(dataset.samples.iter().cloned().enumerate())
+            .then(|(i, sample)| {
+                let scorer = scorer.clone();
+                let sample_clone = sample.clone();
+                let on_progress = on_progress.clone();
+                async move {
+                    // Use spawn_blocking for CPU-bound rust-bert inference
+                    let (result, raw_scores) = tokio::task::spawn_blocking(move || {
+                        let scorer = scorer.lock().expect("scorer lock poisoned");
+                        evaluate_sample_with_scores(&sample_clone, &*scorer)
+                    })
+                    .await
+                    .expect("spawn_blocking failed");
+
+                    on_progress(Progress {
+                        current: i + 1,
+                        total,
+                        sample_id: sample.id.clone(),
+                        correct: result.correct,
+                    });
+
+                    (sample, result, raw_scores)
+                }
+            })
+            .collect()
+            .await;
+
+    build_result_with_scores(sample_results)
 }

@@ -1,0 +1,262 @@
+# Loom Configuration
+# Root configuration with CLI parameters at top level
+
+# Optional top-level CLI options (uncomment to override defaults)
+output: "output/scores.json"
+strict: true
+concurrency: 4
+batch_size: 8
+
+layers:
+  score:
+    # Model configuration for zero-shot classification
+    # BART is the default and most stable model for zero-shot in rust-bert
+    model:
+      type: zero_shot_classification
+      model: Bart
+
+    threshold: 0.75
+    top_k: 2
+
+    modifiers:
+      short_text_delta: 0.05
+      long_text_delta: 0.05
+      short_text_limit: 20
+      long_text_limit: 200
+
+    categories:
+      sentiment:
+        top_k: 2
+        labels:
+          positive:
+            hypothesis: "The speaker is expressing a positive, happy, or optimistic sentiment."
+            weight: 0.30
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          negative:
+            hypothesis: "The speaker is expressing a negative, unhappy, or pessimistic sentiment."
+            weight: 0.35
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          neutral:
+            hypothesis: "The speaker is expressing a neutral or matter-of-fact sentiment without strong emotion."
+            weight: 0.10
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+
+      emotion:
+        top_k: 2
+        labels:
+          joy:
+            hypothesis: "The speaker is feeling joyful, happy, or excited about something."
+            weight: 0.30
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          fear:
+            hypothesis: "The speaker is feeling afraid, anxious, or worried about something."
+            weight: 0.40
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          shame:
+            hypothesis: "The speaker is feeling ashamed, embarrassed, or guilty about something."
+            weight: 0.35
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          pride:
+            hypothesis: "The speaker is feeling proud, accomplished, or satisfied with an achievement."
+            weight: 0.30
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          stress:
+            hypothesis: "The speaker is feeling stressed, overwhelmed, or under pressure."
+            weight: 0.45
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          anger:
+            hypothesis: "The speaker is feeling angry, frustrated, or irritated about something."
+            weight: 0.40
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          sad:
+            hypothesis: "The speaker is feeling sad, upset, or grieving about something."
+            weight: 0.40
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+
+      outcome:
+        top_k: 2
+        labels:
+          success:
+            hypothesis: "The speaker is describing a success, achievement, or accomplishment."
+            weight: 0.55
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          failure:
+            hypothesis: "The speaker is describing a failure, setback, or something that went wrong."
+            weight: 0.55
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          reward:
+            hypothesis: "The speaker is describing receiving a reward, benefit, or positive outcome."
+            weight: 0.45
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          punishment:
+            hypothesis: "The speaker is describing a punishment, penalty, or negative consequence."
+            weight: 0.45
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          decision:
+            hypothesis: "The speaker has made or is announcing a decision or choice."
+            weight: 0.80
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          progress:
+            hypothesis: "The speaker is describing progress, completion, or forward movement on something."
+            weight: 0.65
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          conflict:
+            hypothesis: "The speaker is describing a disagreement, conflict, argument, or interpersonal tension."
+            weight: 0.65
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+
+      context:
+        top_k: 2
+        labels:
+          fact:
+            hypothesis: "The speaker is stating a factual piece of information that should be remembered."
+            weight: 0.80
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          time:
+            hypothesis: "The speaker is mentioning a specific time, date, or deadline."
+            weight: 0.55
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          place:
+            hypothesis: "The speaker is mentioning a specific location, place, or address."
+            weight: 0.55
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          entity:
+            hypothesis: "The speaker is mentioning a specific named person, organization, or entity."
+            weight: 0.65
+            threshold: 0.75
+            platt_a: 1.0
+            platt_b: 0.0
+          phatic:
+            hypothesis: "This is just social pleasantry, small talk, or acknowledgment with no substantive information."
+            weight: 0.40
+            threshold: 0.80
+            platt_a: 1.0
+            platt_b: 0.0
+          preference:
+            hypothesis: "The speaker is expressing a personal preference, like, dislike, or opinion."
+            weight: 0.85
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          plan:
+            hypothesis: "The speaker is describing a plan, intention, or commitment to do something."
+            weight: 0.90
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          goal:
+            hypothesis: "The speaker is describing a goal, objective, aspiration, or something they want to achieve."
+            weight: 0.90
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          task:
+            hypothesis: "The speaker is describing something they need to do, remember, or a task to complete."
+            weight: 1.00
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+
+      conversational:
+        top_k: 2
+        labels:
+          multi_session:
+            hypothesis: "The speaker is referencing prior conversations, ongoing threads, or something that spans multiple sessions and should be carried forward."
+            weight: 0.95
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          follow_up:
+            hypothesis: "The speaker is following up on something previously discussed, asking for continuation, refinement, or status on an existing topic."
+            weight: 0.80
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          clarification:
+            hypothesis: "The speaker is clarifying or disambiguating what they meant, correcting misunderstandings, or narrowing scope."
+            weight: 0.75
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          correction:
+            hypothesis: "The speaker is correcting a prior statement, fixing an error, or retracting/changing something previously said."
+            weight: 0.85
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          question:
+            hypothesis: "The speaker is asking a question or requesting information, guidance, or an explanation."
+            weight: 0.55
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          instruction:
+            hypothesis: "The speaker is giving an instruction, constraint, or requirement about how to respond or what to produce."
+            weight: 0.75
+            threshold: 0.70
+            platt_a: 1.0
+            platt_b: 0.0
+          preference_update:
+            hypothesis: "The speaker is updating a preference or providing a new constraint that should change future responses."
+            weight: 0.90
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          decision_commitment:
+            hypothesis: "The speaker is committing to a decision, choosing between options, or confirming a direction to proceed."
+            weight: 0.85
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          unresolved:
+            hypothesis: "The speaker indicates something is unresolved, blocked, or pending and likely needs to be revisited."
+            weight: 0.80
+            threshold: 0.65
+            platt_a: 1.0
+            platt_b: 0.0
+          meta_process:
+            hypothesis: "The speaker is talking about the process of the conversation itself (format, brevity, style, structure, steps, or evaluation criteria)."
+            weight: 0.60
+            threshold: 0.75
+            platt_a: 1.0
+            platt_b: 0.0

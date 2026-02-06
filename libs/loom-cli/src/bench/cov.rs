@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
 use loom::io::path::{FilePath, Path};
-use loom::runtime::bench::{self, Category};
+use loom::runtime::bench;
 
 use super::build_runtime;
 use crate::widgets::{self, Widget};
@@ -40,18 +40,10 @@ pub async fn exec(path: &PathBuf) {
     );
 
     println!("\n=== By Category ===\n");
-    let categories = [
-        Category::Task,
-        Category::Emotional,
-        Category::Factual,
-        Category::Preference,
-        Category::Decision,
-        Category::Phatic,
-        Category::Ambiguous,
-    ];
+    let mut categories: Vec<_> = coverage.samples_by_category.iter().collect();
+    categories.sort_by_key(|(cat, _)| cat.as_str());
 
-    for cat in categories {
-        let count = coverage.samples_by_category.get(&cat).unwrap_or(&0);
+    for (cat, count) in categories {
         let target = 50;
         let (status, color) = if *count >= target {
             ("✓", Color::Green)
@@ -61,7 +53,7 @@ pub async fn exec(path: &PathBuf) {
         let _ = stdout.execute(SetForegroundColor(color));
         print!("  {} ", status);
         let _ = stdout.execute(ResetColor);
-        println!("{:12} {:3}/{}", format!("{:?}", cat), count, target);
+        println!("{:20} {:3}/{}", cat, count, target);
     }
 
     println!("\n=== By Label ===\n");

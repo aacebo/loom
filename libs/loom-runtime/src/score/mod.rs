@@ -52,19 +52,19 @@ impl ScoreLayer {
         let label_names: Vec<&str> = self
             .config
             .categories
-            .iter()
-            .flat_map(|c| c.labels.iter().map(|l| l.name.as_str()))
+            .values()
+            .flat_map(|c| c.labels.keys().map(|s| s.as_str()))
             .collect();
 
         // Build a static hypothesis map for the closure
         let hypothesis_map: std::collections::HashMap<String, String> = self
             .config
             .categories
-            .iter()
+            .values()
             .flat_map(|c| {
                 c.labels
                     .iter()
-                    .map(|l| (l.name.clone(), l.hypothesis.clone()))
+                    .map(|(name, l)| (name.clone(), l.hypothesis.clone()))
             })
             .collect();
 
@@ -102,18 +102,18 @@ impl ScoreLayer {
         // Build ScoreCategory for each category in config
         let mut categories = Vec::new();
 
-        for cat_config in &self.config.categories {
+        for (cat_name, cat_config) in &self.config.categories {
             let mut labels = Vec::new();
 
-            for label_config in &cat_config.labels {
+            for (label_name, label_config) in &cat_config.labels {
                 let raw_score = prediction_map
-                    .get(label_config.name.as_str())
+                    .get(label_name.as_str())
                     .copied()
                     .unwrap_or(0.0);
 
                 let score_label = ScoreLabel::new(
-                    label_config.name.clone(),
-                    cat_config.name.clone(),
+                    label_name.clone(),
+                    cat_name.clone(),
                     0, // sentence index
                 )
                 .with_score(raw_score, label_config);
@@ -122,7 +122,7 @@ impl ScoreLayer {
             }
 
             let top_k = cat_config.top_k;
-            categories.push(ScoreCategory::topk(cat_config.name.clone(), labels, top_k));
+            categories.push(ScoreCategory::topk(cat_name.clone(), labels, top_k));
         }
 
         let mut result = LayerResult::new(ScoreResult::new(categories));
@@ -256,19 +256,19 @@ impl BatchScorer for ScoreLayer {
         let label_names: Vec<&str> = self
             .config
             .categories
-            .iter()
-            .flat_map(|c| c.labels.iter().map(|l| l.name.as_str()))
+            .values()
+            .flat_map(|c| c.labels.keys().map(|s| s.as_str()))
             .collect();
 
         // Build a static hypothesis map for the closure
         let hypothesis_map: std::collections::HashMap<String, String> = self
             .config
             .categories
-            .iter()
+            .values()
             .flat_map(|c| {
                 c.labels
                     .iter()
-                    .map(|l| (l.name.clone(), l.hypothesis.clone()))
+                    .map(|(name, l)| (name.clone(), l.hypothesis.clone()))
             })
             .collect();
 
@@ -304,18 +304,18 @@ impl BatchScorer for ScoreLayer {
             // Build ScoreCategory for each category in config
             let mut categories = Vec::new();
 
-            for cat_config in &self.config.categories {
+            for (cat_name, cat_config) in &self.config.categories {
                 let mut labels = Vec::new();
 
-                for label_config in &cat_config.labels {
+                for (label_name, label_config) in &cat_config.labels {
                     let raw_score = prediction_map
-                        .get(label_config.name.as_str())
+                        .get(label_name.as_str())
                         .copied()
                         .unwrap_or(0.0);
 
                     let score_label = ScoreLabel::new(
-                        label_config.name.clone(),
-                        cat_config.name.clone(),
+                        label_name.clone(),
+                        cat_name.clone(),
                         0, // sentence index
                     )
                     .with_score(raw_score, label_config);
@@ -324,7 +324,7 @@ impl BatchScorer for ScoreLayer {
                 }
 
                 let top_k = cat_config.top_k;
-                categories.push(ScoreCategory::topk(cat_config.name.clone(), labels, top_k));
+                categories.push(ScoreCategory::topk(cat_name.clone(), labels, top_k));
             }
 
             outputs.push(ScoreLayerOutput::new(ScoreResult::new(categories)));
@@ -444,72 +444,91 @@ mod tests {
     #[cfg(feature = "int")]
     fn int_test_config() -> ScoreConfig {
         use loom_cortex::config::{CortexModelConfig, CortexZeroShotConfig};
+        use std::collections::BTreeMap;
+
+        let mut sentiment_labels = BTreeMap::new();
+        sentiment_labels.insert(
+            "positive".to_string(),
+            ScoreLabelConfig {
+                hypothesis: "The speaker is expressing a positive, happy, or optimistic sentiment."
+                    .to_string(),
+                weight: 0.30,
+                threshold: 0.70,
+                platt_a: 1.0,
+                platt_b: 0.0,
+            },
+        );
+        sentiment_labels.insert(
+            "negative".to_string(),
+            ScoreLabelConfig {
+                hypothesis:
+                    "The speaker is expressing a negative, unhappy, or pessimistic sentiment."
+                        .to_string(),
+                weight: 0.35,
+                threshold: 0.70,
+                platt_a: 1.0,
+                platt_b: 0.0,
+            },
+        );
+
+        let mut emotion_labels = BTreeMap::new();
+        emotion_labels.insert(
+            "stress".to_string(),
+            ScoreLabelConfig {
+                hypothesis: "The speaker is feeling stressed, overwhelmed, or under pressure."
+                    .to_string(),
+                weight: 0.45,
+                threshold: 0.70,
+                platt_a: 1.0,
+                platt_b: 0.0,
+            },
+        );
+
+        let mut context_labels = BTreeMap::new();
+        context_labels.insert("phatic".to_string(), ScoreLabelConfig {
+            hypothesis: "This is just social pleasantry, small talk, or acknowledgment with no substantive information.".to_string(),
+            weight: 0.40,
+            threshold: 0.80,
+            platt_a: 1.0,
+            platt_b: 0.0,
+        });
+        context_labels.insert("task".to_string(), ScoreLabelConfig {
+            hypothesis: "The speaker is describing something they need to do, remember, or a task to complete.".to_string(),
+            weight: 1.00,
+            threshold: 0.65,
+            platt_a: 1.0,
+            platt_b: 0.0,
+        });
+
+        let mut categories = BTreeMap::new();
+        categories.insert(
+            "sentiment".to_string(),
+            ScoreCategoryConfig {
+                top_k: 2,
+                labels: sentiment_labels,
+            },
+        );
+        categories.insert(
+            "emotion".to_string(),
+            ScoreCategoryConfig {
+                top_k: 2,
+                labels: emotion_labels,
+            },
+        );
+        categories.insert(
+            "context".to_string(),
+            ScoreCategoryConfig {
+                top_k: 2,
+                labels: context_labels,
+            },
+        );
 
         ScoreConfig {
             model: CortexModelConfig::ZeroShotClassification(CortexZeroShotConfig::default()),
             threshold: 0.40,
             top_k: 2,
             modifiers: ScoreModifierConfig::default(),
-            categories: vec![
-                ScoreCategoryConfig {
-                    name: "sentiment".to_string(),
-                    top_k: 2,
-                    labels: vec![
-                        ScoreLabelConfig {
-                            name: "positive".to_string(),
-                            hypothesis: "The speaker is expressing a positive, happy, or optimistic sentiment.".to_string(),
-                            weight: 0.30,
-                            threshold: 0.70,
-                            platt_a: 1.0,
-                            platt_b: 0.0,
-                        },
-                        ScoreLabelConfig {
-                            name: "negative".to_string(),
-                            hypothesis: "The speaker is expressing a negative, unhappy, or pessimistic sentiment.".to_string(),
-                            weight: 0.35,
-                            threshold: 0.70,
-                            platt_a: 1.0,
-                            platt_b: 0.0,
-                        },
-                    ],
-                },
-                ScoreCategoryConfig {
-                    name: "emotion".to_string(),
-                    top_k: 2,
-                    labels: vec![
-                        ScoreLabelConfig {
-                            name: "stress".to_string(),
-                            hypothesis: "The speaker is feeling stressed, overwhelmed, or under pressure.".to_string(),
-                            weight: 0.45,
-                            threshold: 0.70,
-                            platt_a: 1.0,
-                            platt_b: 0.0,
-                        },
-                    ],
-                },
-                ScoreCategoryConfig {
-                    name: "context".to_string(),
-                    top_k: 2,
-                    labels: vec![
-                        ScoreLabelConfig {
-                            name: "phatic".to_string(),
-                            hypothesis: "This is just social pleasantry, small talk, or acknowledgment with no substantive information.".to_string(),
-                            weight: 0.40,
-                            threshold: 0.80,
-                            platt_a: 1.0,
-                            platt_b: 0.0,
-                        },
-                        ScoreLabelConfig {
-                            name: "task".to_string(),
-                            hypothesis: "The speaker is describing something they need to do, remember, or a task to complete.".to_string(),
-                            weight: 1.00,
-                            threshold: 0.65,
-                            platt_a: 1.0,
-                            platt_b: 0.0,
-                        },
-                    ],
-                },
-            ],
+            categories,
         }
     }
 

@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use loom::io::path::{FilePath, Path};
-use loom::runtime::{bench, score::ScoreConfig};
+use loom::runtime::{LoomConfig, bench};
 
 use super::build_runtime;
 use crate::widgets::{self, Widget};
@@ -11,14 +12,15 @@ pub async fn exec(
     path: &PathBuf,
     config_path: &PathBuf,
     verbose: bool,
-    concurrency: usize,
-    batch_size: usize,
+    concurrency: Option<usize>,
+    batch_size: Option<usize>,
+    strict: Option<bool>,
 ) {
     println!("Loading dataset from {:?}...", path);
 
     let runtime = build_runtime();
     let file_path = Path::File(FilePath::from(path.clone()));
-    let dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
+    let mut dataset: bench::BenchDataset = match runtime.load("file_system", &file_path).await {
         Ok(d) => d,
         Err(e) => {
             eprintln!("Error loading dataset: {}", e);
@@ -30,7 +32,7 @@ pub async fn exec(
     println!("Loading config from {:?}...", config_path);
 
     let config_file_path = Path::File(FilePath::from(config_path.clone()));
-    let config: ScoreConfig = match runtime.load("file_system", &config_file_path).await {
+    let loom_config: LoomConfig = match runtime.load("file_system", &config_file_path).await {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Error loading config: {}", e);
@@ -38,10 +40,67 @@ pub async fn exec(
         }
     };
 
+    // Merge CLI args with config values (CLI overrides config)
+    let concurrency = concurrency.unwrap_or(loom_config.concurrency);
+    let batch_size = batch_size.unwrap_or(loom_config.batch_size);
+    let strict = strict.unwrap_or(loom_config.strict);
+
+    // Get score config from layers
+    let score_config = loom_config.layers.score;
+
+    // Extract valid categories and labels from config
+    let valid_categories: Vec<String> = score_config.categories.keys().cloned().collect();
+    let valid_labels: Vec<String> = score_config
+        .categories
+        .values()
+        .flat_map(|c| c.labels.keys().cloned())
+        .collect();
+
+    // Validate dataset against config
+    let errors = dataset.validate_with_config(Some(&valid_categories), Some(&valid_labels));
+
+    if !errors.is_empty() {
+        if strict {
+            eprintln!("Validation failed with {} error(s):", errors.len());
+            for error in &errors {
+                eprintln!("  - {}", error);
+            }
+            std::process::exit(1);
+        } else {
+            // Filter out invalid samples
+            let valid_category_set: HashSet<&str> =
+                valid_categories.iter().map(|s| s.as_str()).collect();
+            let valid_label_set: HashSet<&str> = valid_labels.iter().map(|s| s.as_str()).collect();
+
+            let original_count = dataset.samples.len();
+            dataset.samples.retain(|sample| {
+                let category_valid = valid_category_set.contains(sample.primary_category.as_str());
+                let labels_valid = sample
+                    .expected_labels
+                    .iter()
+                    .all(|l| valid_label_set.contains(l.as_str()));
+                category_valid && labels_valid
+            });
+
+            let skipped = original_count - dataset.samples.len();
+            if skipped > 0 {
+                eprintln!(
+                    "Warning: Skipping {} samples with unknown categories/labels",
+                    skipped
+                );
+            }
+        }
+    }
+
+    if dataset.samples.is_empty() {
+        eprintln!("Error: No valid samples remaining after filtering");
+        std::process::exit(1);
+    }
+
     println!("Building scorer (this may download model files on first run)...");
 
     // Build scorer in blocking task to avoid tokio runtime conflict with rust-bert
-    let scorer = match tokio::task::spawn_blocking(move || config.build())
+    let scorer = match tokio::task::spawn_blocking(move || score_config.build())
         .await
         .expect("spawn_blocking failed")
     {
@@ -63,7 +122,7 @@ pub async fn exec(
 
     let scorer = Arc::new(Mutex::new(scorer));
     let total = dataset.samples.len();
-    let config = bench::AsyncRunConfig {
+    let run_config = bench::AsyncRunConfig {
         concurrency,
         batch_size: Some(batch_size),
     };
@@ -80,9 +139,9 @@ pub async fn exec(
     };
 
     let result = if batch_size > 1 {
-        bench::run_batch_async_with_config(&dataset, scorer, config, progress_callback).await
+        bench::run_batch_async_with_config(&dataset, scorer, run_config, progress_callback).await
     } else {
-        bench::run_async_with_config(&dataset, scorer, config, progress_callback).await
+        bench::run_async_with_config(&dataset, scorer, run_config, progress_callback).await
     };
 
     // Clear the progress line
@@ -117,14 +176,14 @@ pub async fn exec(
     if verbose {
         println!("\n=== Per-Category Results ===\n");
         let mut categories: Vec<_> = result.per_category.iter().collect();
-        categories.sort_by_key(|(cat, _)| format!("{:?}", cat));
+        categories.sort_by_key(|(cat, _)| cat.as_str());
 
         for (category, cat_result) in categories {
             let cat_metrics = metrics.per_category.get(category);
             let accuracy = cat_metrics.map(|m| m.accuracy).unwrap_or(0.0);
             println!(
-                "{:12} {:3}/{:3} ({:.1}%)",
-                format!("{:?}", category),
+                "{:20} {:3}/{:3} ({:.1}%)",
+                category,
                 cat_result.correct,
                 cat_result.total,
                 accuracy * 100.0

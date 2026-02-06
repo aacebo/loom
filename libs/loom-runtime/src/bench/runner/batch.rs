@@ -5,7 +5,10 @@ use loom_cortex::bench::platt::{RawScoreExport, SampleScores};
 use loom_cortex::bench::{BatchScorer, ScorerOutput};
 
 use super::config::AsyncRunConfig;
-use super::helpers::{build_result, evaluate_batch_output};
+use super::helpers::{
+    build_result, build_result_with_scores, evaluate_batch_output,
+    evaluate_batch_output_with_scores,
+};
 use crate::bench::{BenchDataset, BenchResult, BenchSample, Decision, Progress, SampleResult};
 
 /// Run benchmarks using batch inference for improved throughput.
@@ -217,4 +220,114 @@ where
     RawScoreExport {
         samples: all_scores,
     }
+}
+
+/// Run benchmarks using batch inference and capture raw scores.
+///
+/// Returns both the BenchResult and a map of sample_id -> label -> raw_score.
+pub async fn run_batch_async_with_scores<S>(
+    dataset: &BenchDataset,
+    scorer: Arc<Mutex<S>>,
+) -> (BenchResult, HashMap<String, HashMap<String, f32>>)
+where
+    S: BatchScorer + Send + 'static,
+    S::Output: Send + 'static,
+    S::Error: Send + 'static,
+{
+    run_batch_async_with_scores_config(dataset, scorer, AsyncRunConfig::default(), |_| {}).await
+}
+
+/// Run benchmarks using batch inference with config and capture raw scores.
+///
+/// Returns both the BenchResult and a map of sample_id -> label -> raw_score.
+pub async fn run_batch_async_with_scores_config<S, F>(
+    dataset: &BenchDataset,
+    scorer: Arc<Mutex<S>>,
+    config: AsyncRunConfig,
+    on_progress: F,
+) -> (BenchResult, HashMap<String, HashMap<String, f32>>)
+where
+    S: BatchScorer + Send + 'static,
+    S::Output: Send + 'static,
+    S::Error: Send + 'static,
+    F: Fn(Progress) + Send + Sync + 'static,
+{
+    let total = dataset.samples.len();
+    let on_progress = Arc::new(on_progress);
+
+    // Determine batch size
+    let batch_size = config
+        .batch_size
+        .unwrap_or_else(|| scorer.lock().expect("scorer lock poisoned").batch_size());
+
+    // Collect all samples with their original indices
+    let indexed_samples: Vec<(usize, BenchSample)> =
+        dataset.samples.iter().cloned().enumerate().collect();
+
+    // Process samples in batches, collecting both results and raw scores
+    let mut all_results: Vec<(BenchSample, SampleResult, HashMap<String, f32>)> =
+        Vec::with_capacity(total);
+    let mut processed = 0;
+
+    for chunk in indexed_samples.chunks(batch_size) {
+        let batch_samples: Vec<(usize, BenchSample)> = chunk.to_vec();
+        let texts: Vec<String> = batch_samples.iter().map(|(_, s)| s.text.clone()).collect();
+        let scorer = scorer.clone();
+        let on_progress = on_progress.clone();
+
+        // Process batch in spawn_blocking
+        let batch_outputs = tokio::task::spawn_blocking(move || {
+            let scorer = scorer.lock().expect("scorer lock poisoned");
+            let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
+            scorer.score_batch(&text_refs)
+        })
+        .await
+        .expect("spawn_blocking failed");
+
+        // Evaluate each sample in the batch
+        match batch_outputs {
+            Ok(outputs) => {
+                for ((_idx, sample), output) in batch_samples.into_iter().zip(outputs.into_iter()) {
+                    let (sample_result, raw_scores) =
+                        evaluate_batch_output_with_scores(&sample, output);
+
+                    processed += 1;
+                    on_progress(Progress {
+                        current: processed,
+                        total,
+                        sample_id: sample.id.clone(),
+                        correct: sample_result.correct,
+                    });
+
+                    all_results.push((sample, sample_result, raw_scores));
+                }
+            }
+            Err(_) => {
+                // On batch error, mark all samples as rejected with empty scores
+                for (_idx, sample) in batch_samples {
+                    let sample_result = SampleResult {
+                        id: sample.id.clone(),
+                        expected_decision: sample.expected_decision,
+                        actual_decision: Decision::Reject,
+                        correct: sample.expected_decision == Decision::Reject,
+                        score: 0.0,
+                        expected_labels: sample.expected_labels.clone(),
+                        detected_labels: vec![],
+                    };
+
+                    processed += 1;
+                    on_progress(Progress {
+                        current: processed,
+                        total,
+                        sample_id: sample.id.clone(),
+                        correct: sample_result.correct,
+                    });
+
+                    all_results.push((sample, sample_result, HashMap::new()));
+                }
+            }
+        }
+    }
+
+    build_result_with_scores(all_results)
 }
