@@ -22,6 +22,25 @@ pub trait AsyncScorer: Send + Sync {
     async fn score_async(&self, text: &str) -> Result<Self::Output, Self::Error>;
 }
 
+/// A scorer that can evaluate multiple texts in a single batch.
+/// This is more efficient than scoring texts one at a time.
+///
+/// Note: Unlike `AsyncScorer`, this trait does not require `Send + Sync` because
+/// rust-bert models contain `tch::Tensor` with raw pointers that aren't thread-safe.
+/// Use with `Arc<Mutex<S>>` for thread-safe access in async contexts.
+pub trait BatchScorer {
+    type Output: ScorerOutput;
+    type Error;
+
+    /// Score multiple texts in a single batch.
+    fn score_batch(&self, texts: &[&str]) -> Result<Vec<Self::Output>, Self::Error>;
+
+    /// Recommended batch size for optimal throughput.
+    fn batch_size(&self) -> usize {
+        8 // sensible default
+    }
+}
+
 /// Output from a scorer containing decision, score, and label information.
 pub trait ScorerOutput {
     /// The decision (Accept/Reject) for this scoring.

@@ -7,7 +7,7 @@ pub use result::*;
 use std::collections::HashMap;
 
 use loom_cortex::CortexModel;
-use loom_cortex::bench::{Decision, Scorer, ScorerOutput};
+use loom_cortex::bench::{BatchScorer, Decision, Scorer, ScorerOutput};
 use loom_error::{Error, ErrorCode};
 use loom_pipe::Build;
 
@@ -229,6 +229,112 @@ impl Scorer for ScoreLayer {
     fn score(&self, text: &str) -> Result<Self::Output, Self::Error> {
         let ctx = Context::new(text, ());
         self.invoke(ctx).map(|r| ScoreLayerOutput::new(r.output))
+    }
+}
+
+impl BatchScorer for ScoreLayer {
+    type Output = ScoreLayerOutput;
+    type Error = Error;
+
+    fn score_batch(&self, texts: &[&str]) -> Result<Vec<Self::Output>, Self::Error> {
+        if texts.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Extract the zero-shot model
+        let zs_model = match &self.model {
+            CortexModel::ZeroShotClassification { model, .. } => model,
+            _ => {
+                return Err(Error::builder()
+                    .code(ErrorCode::BadArguments)
+                    .message("ScoreLayer requires a ZeroShotClassification model")
+                    .build());
+            }
+        };
+
+        // Get all label names from config
+        let label_names: Vec<&str> = self
+            .config
+            .categories
+            .iter()
+            .flat_map(|c| c.labels.iter().map(|l| l.name.as_str()))
+            .collect();
+
+        // Build a static hypothesis map for the closure
+        let hypothesis_map: std::collections::HashMap<String, String> = self
+            .config
+            .categories
+            .iter()
+            .flat_map(|c| {
+                c.labels
+                    .iter()
+                    .map(|l| (l.name.clone(), l.hypothesis.clone()))
+            })
+            .collect();
+
+        // Create hypothesis function using the cloned map
+        let hypothesis_fn = Box::new(move |label: &str| {
+            hypothesis_map
+                .get(label)
+                .cloned()
+                .unwrap_or_else(|| format!("This example is {}.", label))
+        });
+
+        // Run zero-shot classification on ALL texts at once (batch inference)
+        let predictions =
+            zs_model.predict_multilabel(texts, &label_names, Some(hypothesis_fn), 128)?;
+
+        // Process predictions for each text
+        let mut outputs = Vec::with_capacity(texts.len());
+
+        for sentence_predictions in &predictions {
+            // Build a lookup map for this text's predictions by label name
+            let mut prediction_map: HashMap<&str, f32> = HashMap::new();
+            for pred in sentence_predictions {
+                prediction_map.insert(
+                    label_names
+                        .iter()
+                        .find(|&&n| n == pred.text)
+                        .copied()
+                        .unwrap_or(&pred.text),
+                    pred.score as f32,
+                );
+            }
+
+            // Build ScoreCategory for each category in config
+            let mut categories = Vec::new();
+
+            for cat_config in &self.config.categories {
+                let mut labels = Vec::new();
+
+                for label_config in &cat_config.labels {
+                    let raw_score = prediction_map
+                        .get(label_config.name.as_str())
+                        .copied()
+                        .unwrap_or(0.0);
+
+                    let score_label = ScoreLabel::new(
+                        label_config.name.clone(),
+                        cat_config.name.clone(),
+                        0, // sentence index
+                    )
+                    .with_score(raw_score, label_config);
+
+                    labels.push(score_label);
+                }
+
+                let top_k = cat_config.top_k;
+                categories.push(ScoreCategory::topk(cat_config.name.clone(), labels, top_k));
+            }
+
+            outputs.push(ScoreLayerOutput::new(ScoreResult::new(categories)));
+        }
+
+        Ok(outputs)
+    }
+
+    fn batch_size(&self) -> usize {
+        16 // Optimal batch size for zero-shot classification
     }
 }
 

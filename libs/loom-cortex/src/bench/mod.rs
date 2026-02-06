@@ -3,6 +3,7 @@
 //! This module contains the core ML abstractions:
 //! - `Scorer` trait for synchronous text scoring
 //! - `AsyncScorer` trait for async/parallel text scoring
+//! - `BatchScorer` trait for batch inference optimization
 //! - `Decision` enum for accept/reject outcomes
 //! - `platt` submodule for Platt calibration training
 //!

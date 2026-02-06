@@ -7,7 +7,13 @@ use loom::runtime::{bench, score::ScoreConfig};
 
 use super::build_runtime;
 
-pub async fn exec(path: &PathBuf, config_path: &PathBuf, verbose: bool, concurrency: usize) {
+pub async fn exec(
+    path: &PathBuf,
+    config_path: &PathBuf,
+    verbose: bool,
+    concurrency: usize,
+    batch_size: usize,
+) {
     println!("Loading dataset from {:?}...", path);
 
     let runtime = build_runtime();
@@ -47,16 +53,23 @@ pub async fn exec(path: &PathBuf, config_path: &PathBuf, verbose: bool, concurre
         }
     };
 
-    println!(
-        "\nRunning benchmark with {} parallel workers...\n",
-        concurrency
-    );
+    if batch_size > 1 {
+        println!("\nRunning benchmark with batch size {}...\n", batch_size);
+    } else {
+        println!(
+            "\nRunning benchmark with {} parallel workers...\n",
+            concurrency
+        );
+    }
 
     let total = dataset.samples.len();
     let scorer = Arc::new(Mutex::new(scorer));
-    let config = bench::AsyncRunConfig { concurrency };
+    let config = bench::AsyncRunConfig {
+        concurrency,
+        batch_size: Some(batch_size),
+    };
 
-    let result = bench::run_async_with_config(&dataset, scorer, config, |p| {
+    let progress_callback = |p: bench::Progress| {
         let pct = (p.current as f32 / p.total as f32 * 100.0) as usize;
         let bar_width = 30;
         let filled = pct * bar_width / 100;
@@ -73,8 +86,13 @@ pub async fn exec(path: &PathBuf, config_path: &PathBuf, verbose: bool, concurre
             p.sample_id
         );
         let _ = io::stdout().flush();
-    })
-    .await;
+    };
+
+    let result = if batch_size > 1 {
+        bench::run_batch_async_with_config(&dataset, scorer, config, progress_callback).await
+    } else {
+        bench::run_async_with_config(&dataset, scorer, config, progress_callback).await
+    };
 
     // Clear the progress line
     print!("\r\x1B[K");

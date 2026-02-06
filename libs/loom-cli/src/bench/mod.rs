@@ -34,6 +34,9 @@ pub enum BenchAction {
         /// Number of parallel inference workers (default: 4)
         #[arg(long, default_value = "4")]
         concurrency: usize,
+        /// Batch size for ML inference (default: 8, use 1 for per-sample)
+        #[arg(long, default_value = "8")]
+        batch_size: usize,
     },
     /// Validate a benchmark dataset
     Validate {
@@ -58,6 +61,9 @@ pub enum BenchAction {
         /// Number of parallel inference workers (default: 4)
         #[arg(long, default_value = "4")]
         concurrency: usize,
+        /// Batch size for ML inference (default: 8, use 1 for per-sample)
+        #[arg(long, default_value = "8")]
+        batch_size: usize,
     },
     /// Train Platt calibration parameters from raw scores
     Train {
@@ -79,7 +85,8 @@ pub async fn run(action: BenchAction) {
             config,
             verbose,
             concurrency,
-        } => run::exec(&path, &config, verbose, concurrency).await,
+            batch_size,
+        } => run::exec(&path, &config, verbose, concurrency, batch_size).await,
         BenchAction::Validate { path } => validate::exec(&path).await,
         BenchAction::Coverage { path } => cov::exec(&path).await,
         BenchAction::Score {
@@ -87,7 +94,8 @@ pub async fn run(action: BenchAction) {
             config,
             output,
             concurrency,
-        } => score::exec(&path, &config, &output, concurrency).await,
+            batch_size,
+        } => score::exec(&path, &config, &output, concurrency, batch_size).await,
         BenchAction::Train { path, output, code } => train::exec(&path, &output, code).await,
     }
 }
