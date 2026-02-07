@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use clap::Args;
 use loom::core::Format;
 use loom::core::path::IdentPath;
 use loom::io::path::{FilePath, Path};
@@ -11,184 +12,215 @@ use loom::runtime::{LoomConfig, ScoreConfig, eval};
 use super::{build_runtime, load_config, resolve_output_path};
 use crate::widgets::{self, Widget};
 
-pub async fn exec(
-    path: &PathBuf,
-    config_path: &PathBuf,
-    output: Option<&PathBuf>,
-    concurrency: Option<usize>,
-    batch_size: Option<usize>,
-    strict: Option<bool>,
-) {
-    println!("Loading dataset from {:?}...", path);
+/// Extract raw scores for Platt calibration training
+#[derive(Debug, Args)]
+pub struct ScoreCommand {
+    /// Path to the dataset JSON file
+    pub path: PathBuf,
 
-    let runtime = build_runtime();
-    let file_path = Path::File(FilePath::from(path.clone()));
-    let mut dataset: eval::SampleDataset = match runtime.load("file_system", &file_path).await {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("Error loading dataset: {}", e);
-            std::process::exit(1);
-        }
-    };
+    /// Path to config file (YAML/JSON/TOML)
+    #[arg(short, long)]
+    pub config: PathBuf,
 
-    println!("Loaded {} samples", dataset.samples.len());
-    println!("Loading config from {:?}...", config_path);
+    /// Output directory for scores (default: input file's directory)
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
 
-    let config = match load_config(config_path.to_str().unwrap_or_default()) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error loading config: {}", e);
-            std::process::exit(1);
-        }
-    };
+    /// Number of parallel inference workers (overrides config)
+    #[arg(long)]
+    pub concurrency: Option<usize>,
 
-    // Bind runtime settings from root
-    let loom_config: LoomConfig = match config.root_section().bind() {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error parsing runtime config: {}", e);
-            std::process::exit(1);
-        }
-    };
+    /// Batch size for ML inference (overrides config)
+    #[arg(long)]
+    pub batch_size: Option<usize>,
 
-    // Merge CLI args with config values (CLI overrides config)
-    let output_dir = output.or(loom_config.output.as_ref());
-    let output_path = resolve_output_path(path, output_dir.map(|p| p.as_path()), "scores.json");
-    let batch_size = batch_size.unwrap_or(loom_config.batch_size);
-    let strict = strict.unwrap_or(loom_config.strict);
-    let _ = concurrency; // Reserved for future multi-model parallelism
+    /// Fail if samples have categories/labels not in config (overrides config)
+    #[arg(long)]
+    pub strict: Option<bool>,
+}
 
-    // Get score config from layers dynamically
-    let score_path = IdentPath::parse("layers.score").expect("valid path");
-    let score_section = config.get_section(&score_path);
-    let score_config: ScoreConfig = match score_section.bind() {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error parsing score config: {}", e);
-            std::process::exit(1);
-        }
-    };
+impl ScoreCommand {
+    pub async fn exec(self) {
+        let path = &self.path;
+        let config_path = &self.config;
+        let output = self.output.as_ref();
+        let concurrency = self.concurrency;
+        let batch_size = self.batch_size;
+        let strict = self.strict;
 
-    // Extract valid categories and labels from config
-    let valid_categories: Vec<String> = score_config.categories.keys().cloned().collect();
-    let valid_labels: Vec<String> = score_config
-        .categories
-        .values()
-        .flat_map(|c| c.labels.keys().cloned())
-        .collect();
+        println!("Loading dataset from {:?}...", path);
 
-    // Validate dataset against config
-    let errors = dataset.validate_with_config(Some(&valid_categories), Some(&valid_labels));
-
-    if !errors.is_empty() {
-        if strict {
-            eprintln!("Validation failed with {} error(s):", errors.len());
-            for error in &errors {
-                eprintln!("  - {}", error);
+        let runtime = build_runtime();
+        let file_path = Path::File(FilePath::from(path.clone()));
+        let mut dataset: eval::SampleDataset = match runtime.load("file_system", &file_path).await {
+            Ok(d) => d,
+            Err(e) => {
+                eprintln!("Error loading dataset: {}", e);
+                std::process::exit(1);
             }
-            std::process::exit(1);
-        } else {
-            // Filter out invalid samples
-            let valid_category_set: HashSet<&str> =
-                valid_categories.iter().map(|s| s.as_str()).collect();
-            let valid_label_set: HashSet<&str> = valid_labels.iter().map(|s| s.as_str()).collect();
+        };
 
-            let original_count = dataset.samples.len();
-            dataset.samples.retain(|sample| {
-                let category_valid = valid_category_set.contains(sample.primary_category.as_str());
-                let labels_valid = sample
-                    .expected_labels
-                    .iter()
-                    .all(|l| valid_label_set.contains(l.as_str()));
-                category_valid && labels_valid
-            });
+        println!("Loaded {} samples", dataset.samples.len());
+        println!("Loading config from {:?}...", config_path);
 
-            let skipped = original_count - dataset.samples.len();
-            if skipped > 0 {
-                eprintln!(
-                    "Warning: Skipping {} samples with unknown categories/labels",
-                    skipped
-                );
+        let config = match load_config(config_path.to_str().unwrap_or_default()) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Error loading config: {}", e);
+                std::process::exit(1);
+            }
+        };
+
+        // Bind runtime settings from root
+        let loom_config: LoomConfig = match config.root_section().bind() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Error parsing runtime config: {}", e);
+                std::process::exit(1);
+            }
+        };
+
+        // Merge CLI args with config values (CLI overrides config)
+        let output_dir = output.or(loom_config.output.as_ref());
+        let output_path = resolve_output_path(path, output_dir.map(|p| p.as_path()), "scores.json");
+        let batch_size = batch_size.unwrap_or(loom_config.batch_size);
+        let strict = strict.unwrap_or(loom_config.strict);
+        let _ = concurrency; // Reserved for future multi-model parallelism
+
+        // Get score config from layers dynamically
+        let score_path = IdentPath::parse("layers.score").expect("valid path");
+        let score_section = config.get_section(&score_path);
+        let score_config: ScoreConfig = match score_section.bind() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Error parsing score config: {}", e);
+                std::process::exit(1);
+            }
+        };
+
+        // Extract valid categories and labels from config
+        let valid_categories: Vec<String> = score_config.categories.keys().cloned().collect();
+        let valid_labels: Vec<String> = score_config
+            .categories
+            .values()
+            .flat_map(|c| c.labels.keys().cloned())
+            .collect();
+
+        // Validate dataset against config
+        let errors = dataset.validate_with_config(Some(&valid_categories), Some(&valid_labels));
+
+        if !errors.is_empty() {
+            if strict {
+                eprintln!("Validation failed with {} error(s):", errors.len());
+                for error in &errors {
+                    eprintln!("  - {}", error);
+                }
+                std::process::exit(1);
+            } else {
+                // Filter out invalid samples
+                let valid_category_set: HashSet<&str> =
+                    valid_categories.iter().map(|s| s.as_str()).collect();
+                let valid_label_set: HashSet<&str> =
+                    valid_labels.iter().map(|s| s.as_str()).collect();
+
+                let original_count = dataset.samples.len();
+                dataset.samples.retain(|sample| {
+                    let category_valid =
+                        valid_category_set.contains(sample.primary_category.as_str());
+                    let labels_valid = sample
+                        .expected_labels
+                        .iter()
+                        .all(|l| valid_label_set.contains(l.as_str()));
+                    category_valid && labels_valid
+                });
+
+                let skipped = original_count - dataset.samples.len();
+                if skipped > 0 {
+                    eprintln!(
+                        "Warning: Skipping {} samples with unknown categories/labels",
+                        skipped
+                    );
+                }
             }
         }
-    }
 
-    if dataset.samples.is_empty() {
-        eprintln!("Error: No valid samples remaining after filtering");
-        std::process::exit(1);
-    }
-
-    println!("Building scorer (this may download model files on first run)...");
-
-    // Build scorer in blocking task to avoid tokio runtime conflict with rust-bert
-    let scorer = match tokio::task::spawn_blocking(move || score_config.build())
-        .await
-        .expect("spawn_blocking failed")
-    {
-        Ok(l) => l,
-        Err(e) => {
-            eprintln!("Error building scorer: {}", e);
+        if dataset.samples.is_empty() {
+            eprintln!("Error: No valid samples remaining after filtering");
             std::process::exit(1);
         }
-    };
 
-    println!(
-        "\nExtracting raw scores with batch size {}...\n",
-        batch_size
-    );
+        println!("Building scorer (this may download model files on first run)...");
 
-    let total = dataset.samples.len();
-    let scorer = Arc::new(Mutex::new(scorer));
+        // Build scorer in blocking task to avoid tokio runtime conflict with rust-bert
+        let scorer = match tokio::task::spawn_blocking(move || score_config.build())
+            .await
+            .expect("spawn_blocking failed")
+        {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Error building scorer: {}", e);
+                std::process::exit(1);
+            }
+        };
 
-    let progress_callback = |p: eval::Progress| {
-        let status = if p.correct { '✓' } else { '✗' };
-        widgets::ProgressBar::new()
-            .total(p.total)
-            .current(p.current)
-            .message(&p.sample_id)
-            .status(status)
-            .render()
-            .write();
-    };
+        println!(
+            "\nExtracting raw scores with batch size {}...\n",
+            batch_size
+        );
 
-    // Run benchmark and capture raw scores
-    let (result, raw_scores) =
-        ScoreLayer::eval_with_scores(scorer, &dataset, batch_size, progress_callback).await;
+        let total = dataset.samples.len();
+        let scorer = Arc::new(Mutex::new(scorer));
 
-    // Clear the progress line
-    widgets::ProgressBar::clear();
-    println!("Scored {} samples", total);
+        let progress_callback = |p: eval::Progress| {
+            let status = if p.correct { '✓' } else { '✗' };
+            widgets::ProgressBar::new()
+                .total(p.total)
+                .current(p.current)
+                .message(&p.sample_id)
+                .status(status)
+                .render()
+                .write();
+        };
 
-    // Build hierarchical export
-    let export = eval::ScoreExport::from_results(&dataset, &result, raw_scores);
+        // Run benchmark and capture raw scores
+        let (result, raw_scores) =
+            ScoreLayer::eval_with_scores(scorer, &dataset, batch_size, progress_callback).await;
 
-    // Display summary
-    let metrics = result.metrics();
-    println!("\n========================================");
-    println!(
-        "  SCORE: {}/100 ({:.1}%)",
-        (metrics.accuracy * 100.0).round() as u32,
-        metrics.accuracy * 100.0
-    );
-    println!("========================================\n");
+        // Clear the progress line
+        widgets::ProgressBar::clear();
+        println!("Scored {} samples", total);
 
-    // Ensure output directory exists
-    if let Some(parent) = output_path.parent() {
-        if let Err(e) = std::fs::create_dir_all(parent) {
-            eprintln!("Error creating output directory: {}", e);
+        // Build hierarchical export
+        let export = eval::ScoreExport::from_results(&dataset, &result, raw_scores);
+
+        // Display summary
+        let metrics = result.metrics();
+        println!("\n========================================");
+        println!(
+            "  SCORE: {}/100 ({:.1}%)",
+            (metrics.accuracy * 100.0).round() as u32,
+            metrics.accuracy * 100.0
+        );
+        println!("========================================\n");
+
+        // Ensure output directory exists
+        if let Some(parent) = output_path.parent() {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                eprintln!("Error creating output directory: {}", e);
+                std::process::exit(1);
+            }
+        }
+
+        // Write to output file using runtime
+        let file_path = Path::File(FilePath::from(output_path.clone()));
+        if let Err(e) = runtime
+            .save("file_system", &file_path, &export, Format::Json)
+            .await
+        {
+            eprintln!("Error writing output file: {}", e);
             std::process::exit(1);
         }
-    }
 
-    // Write to output file using runtime
-    let file_path = Path::File(FilePath::from(output_path.clone()));
-    if let Err(e) = runtime
-        .save("file_system", &file_path, &export, Format::Json)
-        .await
-    {
-        eprintln!("Error writing output file: {}", e);
-        std::process::exit(1);
+        println!("Score export written to {:?}", output_path);
     }
-
-    println!("Score export written to {:?}", output_path);
 }

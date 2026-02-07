@@ -5,6 +5,7 @@ use loom_core::value::Value;
 use loom_core::{Format, path::Path};
 
 use super::{ConfigError, Provider};
+use crate::include::IncludeResolver;
 
 fn infer_format(path: &std::path::Path) -> Format {
     match path.extension().and_then(|e| e.to_str()) {
@@ -20,6 +21,7 @@ pub struct FileProviderBuilder {
     path: PathBuf,
     format: Option<Format>,
     optional: bool,
+    includes: bool,
 }
 
 impl FileProviderBuilder {
@@ -28,6 +30,7 @@ impl FileProviderBuilder {
             path: path.into(),
             format: None,
             optional: false,
+            includes: true,
         }
     }
 
@@ -41,12 +44,20 @@ impl FileProviderBuilder {
         self
     }
 
+    /// Enable or disable `$include` directive resolution.
+    /// Default: `true`
+    pub fn with_includes(mut self, enabled: bool) -> Self {
+        self.includes = enabled;
+        self
+    }
+
     pub fn build(self) -> FileProvider {
         let format = self.format.unwrap_or_else(|| infer_format(&self.path));
         FileProvider {
             path: self.path,
             format,
             is_optional: self.optional,
+            includes: self.includes,
         }
     }
 }
@@ -55,6 +66,7 @@ pub struct FileProvider {
     path: PathBuf,
     format: Format,
     is_optional: bool,
+    includes: bool,
 }
 
 impl FileProvider {
@@ -116,7 +128,12 @@ impl Provider for FileProvider {
         }
 
         let content = std::fs::read_to_string(&self.path)?;
-        let value = self.parse_content(&content)?;
+        let mut value = self.parse_content(&content)?;
+
+        if self.includes {
+            let mut resolver = IncludeResolver::new();
+            value = resolver.resolve(value, &self.path)?;
+        }
 
         Ok(Some(value))
     }

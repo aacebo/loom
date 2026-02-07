@@ -2,31 +2,14 @@
 
 ## Status Overview
 
-| Phase | Description | Crate | Status |
-|-------|-------------|-------|--------|
-| [01-multi-file-merge](01-multi-file-merge.md) | Config file includes/refs | config | PENDING |
-| [02-cli-command-structs](02-cli-command-structs.md) | Command struct refactor | cli | PENDING |
-
-## Priority Tiers
-
-### Tier 1: Config Enhancement
-- **Phase 01**: Multi-file config merge
-
-### Tier 2: CLI Improvements
-- **Phase 02**: CLI command structs
-
-## Dependencies
-
-```
-Phase 01 (Config) - Independent
-
-Phase 02 (CLI) - Independent
-```
+No pending phases. All planned work has been completed.
 
 ## Completed Work Summary
 
 The following phases have been completed and their documentation archived:
 
+- **CLI Command Structs** - Refactored CLI commands to dedicated structs with clap validation
+- **Multi-File Config Merge** - $include directive for config composition
 - **Time Operators** - timeout, delay
 - **Sequence Operators** - flatten, flat_map, chunk, window, concat
 - **Control Flow & Result Ops** - branch, and/or, retry, unwrap/expect operators

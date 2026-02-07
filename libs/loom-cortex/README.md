@@ -120,33 +120,49 @@ let config = CortexSentenceEmbeddingsConfigBuilder::default()
     .unwrap();
 ```
 
-## Benchmarking
+## Scoring Abstractions
 
-The `bench` module provides types and utilities for benchmarking NLP models:
+The `bench` module provides ML-specific abstractions for text scoring:
+
+### Scorer Traits
 
 ```rust
-use loom_cortex::bench::{BenchDataset, BenchResult, Decision, Category};
+use loom_cortex::bench::{Scorer, AsyncScorer, BatchScorer, ScorerOutput, Decision};
 
-// Load a benchmark dataset
-let dataset = BenchDataset::load("benchmark.json")?;
+// Synchronous scoring
+pub trait Scorer: Send + Sync {
+    fn score(&self, text: &str) -> ScorerOutput;
+}
 
-// Validate the dataset
-let errors = dataset.validate();
+// Async scoring
+#[async_trait]
+pub trait AsyncScorer: Send + Sync {
+    async fn score(&self, text: &str) -> ScorerOutput;
+}
 
-// Get coverage report
-let coverage = dataset.coverage();
+// Batch inference optimization
+pub trait BatchScorer: Send + Sync {
+    fn score_batch(&self, texts: &[&str]) -> Vec<ScorerOutput>;
+}
+```
+
+### Decision Enum
+
+```rust
+use loom_cortex::bench::Decision;
+
+let decision = Decision::Accept;  // or Decision::Reject
 ```
 
 ### Platt Calibration
 
-Train Platt scaling parameters for probability calibration:
+Types for Platt scaling probability calibration:
 
 ```rust
-use loom_cortex::bench::{train_platt_params, RawScoreExport};
-
-let result = train_platt_params(&raw_score_export);
-let code = generate_rust_code(&result);
+use loom_cortex::bench::platt::{PlattParams, PlattTrainingResult};
 ```
+
+> **Note:** Operational types (datasets, results, runners) are in `loom_runtime::eval`.
 
 ## Module Structure
 
@@ -160,23 +176,13 @@ loom-cortex/
 │   ├── resource.rs         # Resource loading configuration
 │   ├── bench/
 │   │   ├── mod.rs          # Benchmark module exports
-│   │   ├── dataset.rs      # BenchDataset, BenchSample
-│   │   ├── category.rs     # Category, Difficulty enums
+│   │   ├── scorer.rs       # Scorer, AsyncScorer, BatchScorer traits
 │   │   ├── decision.rs     # Decision enum
-│   │   ├── validation.rs   # ValidationError, CoverageReport
-│   │   ├── result.rs       # BenchResult, SampleResult, Progress
-│   │   └── platt.rs        # Platt calibration training
+│   │   └── platt/          # Platt calibration types
 │   └── config/
 │       ├── mod.rs
 │       ├── model_config.rs # CortexModelConfig dispatcher
-│       ├── conversation.rs
-│       ├── generation.rs
-│       ├── masked_language.rs
-│       ├── question_answering.rs
-│       ├── sentence_embeddings.rs
-│       ├── sequence_classification.rs
-│       ├── token_classification.rs
-│       └── zero_shot.rs
+│       └── ...             # Task-specific configs
 ```
 
 ## Dependencies

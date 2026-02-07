@@ -2487,6 +2487,7 @@ dependencies = [
  "saphyr",
  "serde",
  "serde_json",
+ "tempfile",
  "toml",
 ]
 

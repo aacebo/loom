@@ -8,6 +8,11 @@ pub mod score;
 pub mod train;
 pub mod validate;
 
+pub use run::RunCommand;
+pub use score::ScoreCommand;
+pub use train::TrainCommand;
+pub use validate::ValidateCommand;
+
 /// Resolve the output file path based on input path, optional output directory, and filename.
 ///
 /// # Arguments

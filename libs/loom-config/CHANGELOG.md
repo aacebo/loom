@@ -4,7 +4,7 @@ All notable changes to `loom-config` will be documented in this file.
 
 ## [Unreleased]
 
-_No changes yet._
+- **Multi-File Config Merge** - `$include` directive for composing configs from multiple files
 
 ## Completed
 

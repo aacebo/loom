@@ -11,33 +11,49 @@ cargo build --package loom-cli
 ## Usage
 
 ```bash
-loom-cli <command> [options]
+loom <command> [options]
 ```
 
 ## Commands
 
-### `bench` - Benchmark Operations
+### `run` - Run Evaluation
 
-#### `bench run` - Run benchmark against a dataset
+Run evaluation against a dataset and output results.
 
 ```bash
-loom-cli bench run <path> --config <config> [options]
+loom run <path> --config <config> [options]
+
+Arguments:
+  <path>                     Path to the dataset JSON file
 
 Options:
-  -c, --config <CONFIG>  Path to score config file (YAML/JSON/TOML)
-  -v, --verbose          Show detailed per-category and per-label results
+  -c, --config <CONFIG>      Path to config file (YAML/JSON/TOML)
+  -o, --output <DIR>         Output directory for results (default: input file's directory)
+  -v, --verbose              Show detailed per-category and per-label results
+      --concurrency <N>      Number of parallel inference workers (overrides config)
+      --batch-size <N>       Batch size for ML inference (overrides config)
+      --strict               Fail if samples have categories/labels not in config
 ```
 
 Example:
 ```bash
-loom-cli bench run datasets/dataset.json -c configs/basic.config.yaml
-loom-cli bench run datasets/dataset.json -c configs/basic.config.yaml -v
+loom run datasets/samples.json -c configs/score.yaml
+loom run datasets/samples.json -c configs/score.yaml -v --batch-size 32
 ```
 
-#### `bench validate` - Validate a benchmark dataset
+### `validate` - Validate Dataset
+
+Validate a dataset for structural correctness and optionally against a config.
 
 ```bash
-loom-cli bench validate <path>
+loom validate <path> [options]
+
+Arguments:
+  <path>                     Path to the dataset JSON file
+
+Options:
+  -c, --config <CONFIG>      Path to config file for category/label validation
+      --strict               Exit with error code if validation fails
 ```
 
 Checks for:
@@ -46,42 +62,78 @@ Checks for:
 - Valid label names
 - Valid decision values (accept/reject)
 - No duplicate sample IDs
+- Categories/labels match config (when config provided)
 
-#### `bench coverage` - Show label coverage for a dataset
-
+Example:
 ```bash
-loom-cli bench coverage <path>
+loom validate datasets/samples.json
+loom validate datasets/samples.json -c configs/score.yaml --strict
 ```
 
-Displays:
-- Total samples and accept/reject breakdown
-- Samples per category (target: 50 each)
-- Samples per label (target: 3+ each)
-- Missing labels (if any)
+### `score` - Extract Raw Scores
 
-#### `bench score` - Extract raw scores for Platt calibration
+Extract raw scores from a dataset for Platt calibration training.
 
 ```bash
-loom-cli bench score <path> --config <config> --output <output>
+loom score <path> --config <config> [options]
+
+Arguments:
+  <path>                     Path to the dataset JSON file
 
 Options:
-  -c, --config <CONFIG>  Path to score config file (YAML/JSON/TOML)
-  -o, --output <OUTPUT>  Output path for raw scores JSON
+  -c, --config <CONFIG>      Path to config file (YAML/JSON/TOML)
+  -o, --output <DIR>         Output directory for scores (default: input file's directory)
+      --concurrency <N>      Number of parallel inference workers (overrides config)
+      --batch-size <N>       Batch size for ML inference (overrides config)
+      --strict               Fail if samples have categories/labels not in config
 ```
 
-#### `bench train` - Train Platt calibration parameters
+Outputs a `scores.json` file containing raw model scores for each sample.
+
+Example:
+```bash
+loom score datasets/samples.json -c configs/score.yaml
+loom score datasets/samples.json -c configs/score.yaml -o output/
+```
+
+### `train` - Train Platt Calibration
+
+Train Platt calibration parameters from raw scores.
 
 ```bash
-loom-cli bench train <path> --output <output> [options]
+loom train <path> --output <output> [options]
+
+Arguments:
+  <path>                     Path to raw scores JSON (from score command)
 
 Options:
-  -o, --output <OUTPUT>  Output path for trained parameters
-  --code                 Also output Rust code for label.rs
+  -o, --output <OUTPUT>      Output path for trained parameters JSON (required)
+      --code                 Also output Rust code for label.rs
 ```
+
+Example:
+```bash
+loom train output/scores.json -o output/params.json
+loom train output/scores.json -o output/params.json --code
+```
+
+## Configuration
+
+The CLI supports configuration via YAML, JSON, or TOML files. Settings can be overridden using environment variables with the `LOOM_` prefix.
+
+Environment variable mapping (after prefix removal):
+- Single `_` becomes `.` (hierarchy separator)
+- Double `__` becomes literal `_` in key name
+
+Examples:
+- `LOOM_CONCURRENCY=16` -> `concurrency: 16`
+- `LOOM_BATCH__SIZE=32` -> `batch_size: 32`
+- `LOOM_LAYERS_SCORE_THRESHOLD=0.8` -> `layers.score.threshold: 0.8`
 
 ## Development
 
 Run with cargo:
 ```bash
-cargo run --package loom-cli -- bench run datasets/dataset.json -c configs/basic.config.yaml
+cargo run --package loom-cli -- run datasets/samples.json -c configs/score.yaml
+cargo run --package loom-cli -- validate datasets/samples.json
 ```

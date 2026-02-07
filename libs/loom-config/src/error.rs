@@ -22,6 +22,12 @@ pub enum ConfigError {
 
     /// Provider-specific error
     Provider(String),
+
+    /// Circular include detected
+    CircularInclude { file: String, chain: Vec<String> },
+
+    /// Include file not found
+    IncludeNotFound { path: String, source_file: String },
 }
 
 impl ConfigError {
@@ -39,6 +45,20 @@ impl ConfigError {
 
     pub fn provider<S: Into<String>>(msg: S) -> Self {
         Self::Provider(msg.into())
+    }
+
+    pub fn circular_include<S: Into<String>>(file: S, chain: Vec<String>) -> Self {
+        Self::CircularInclude {
+            file: file.into(),
+            chain,
+        }
+    }
+
+    pub fn include_not_found<S: Into<String>>(path: S, source_file: S) -> Self {
+        Self::IncludeNotFound {
+            path: path.into(),
+            source_file: source_file.into(),
+        }
     }
 
     pub fn is_not_found(&self) -> bool {
@@ -64,6 +84,14 @@ impl ConfigError {
     pub fn is_provider(&self) -> bool {
         matches!(self, Self::Provider(_))
     }
+
+    pub fn is_circular_include(&self) -> bool {
+        matches!(self, Self::CircularInclude { .. })
+    }
+
+    pub fn is_include_not_found(&self) -> bool {
+        matches!(self, Self::IncludeNotFound { .. })
+    }
 }
 
 impl std::fmt::Display for ConfigError {
@@ -75,6 +103,21 @@ impl std::fmt::Display for ConfigError {
             Self::Deserialize(msg) => write!(f, "deserialize error: {}", msg),
             Self::InvalidPath(e) => write!(f, "invalid path: {}", e),
             Self::Provider(msg) => write!(f, "provider error: {}", msg),
+            Self::CircularInclude { file, chain } => {
+                write!(
+                    f,
+                    "circular include detected: {} (chain: {})",
+                    file,
+                    chain.join(" -> ")
+                )
+            }
+            Self::IncludeNotFound { path, source_file } => {
+                write!(
+                    f,
+                    "include not found: {} (referenced from {})",
+                    path, source_file
+                )
+            }
         }
     }
 }

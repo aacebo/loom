@@ -10,13 +10,13 @@ Configuration management for the Loom ecosystem.
 
 ## Key Types
 
-### ConfigBuilder
+### Config
 
 Builder pattern for constructing configuration from multiple sources.
 
-### ConfigRoot / ConfigSection
+### ConfigSection
 
-Type-safe configuration access with hierarchical paths.
+Type-safe configuration access with hierarchical paths. Supports `bind()` for deserializing into typed structs.
 
 ### Providers
 
@@ -26,9 +26,8 @@ Type-safe configuration access with hierarchical paths.
 
 ## Macros
 
-- `get!(config, "path.to.value")` - Get configuration value
-- `get!(config, "path", int)` - Get typed value (int, float, bool, str)
-- `set!(config, "path", value)` - Set configuration value
+- `get!(config, "path.to.value")` - Get string configuration value
+- `get!(config, "path", int)` - Get typed value (int, float, bool, value)
 
 ## Usage
 
@@ -38,12 +37,13 @@ loom-config = { version = "0.0.1", features = ["json"] }
 ```
 
 ```rust
-use loom_config::{ConfigBuilder, ConfigRoot, get, set};
+use loom_config::{Config, MemoryProvider, get};
 
-let config = ConfigBuilder::new()
-    .with_provider(MemoryProvider::new())
-    .build();
+let config = Config::new()
+    .with_provider(MemoryProvider::from_pairs([("database.host", "localhost")]))
+    .build()
+    .unwrap();
 
-set!(config, "database.host", "localhost");
-let host: Option<&str> = get!(config, "database.host", str);
+let host: Option<&str> = get!(config, "database.host");
+let port: Option<i64> = get!(config, "database.port", int);
 ```

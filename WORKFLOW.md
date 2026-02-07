@@ -131,8 +131,7 @@ libs/
 
 backlog/
 ├── README.md                  ← Phase index & completed summary
-├── 01-multi-file-merge.md     ← Next up (top of stack)
-└── 02-cli-command-structs.md  ← Queued
+└── 01-cli-command-structs.md  ← Next up (top of stack)
 ```
 
 ## Phase Stack Rules
@@ -150,8 +149,7 @@ backlog/
 
 | # | Phase | Crate | Status |
 |---|-------|-------|--------|
-| **01** | Multi-File Config Merge | loom-config | 🔸 NEXT |
-| 02 | CLI Command Structs | loom-cli | 🔹 QUEUED |
+| **01** | CLI Command Structs | loom-cli | 🔸 NEXT |
 
 ## Dependencies
 
@@ -159,14 +157,11 @@ backlog/
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#6366f1', 'primaryTextColor': '#fff', 'lineColor': '#94a3b8', 'background': '#0f172a'}}}%%
 
 flowchart TB
-    P01[01 Config]
-    P02[02 CLI]
+    P01[01 CLI]
 
     classDef next fill:#ef4444,stroke:#dc2626,stroke-width:3px,color:#fff
-    classDef independent fill:#f97316,stroke:#ea580c,stroke-width:2px,color:#fff
 
     class P01 next
-    class P02 independent
 ```
 
 ## Crate Changelogs
@@ -178,7 +173,7 @@ Each crate maintains its own `CHANGELOG.md`:
 | `loom-error` | Serde support for `Error` and `ErrorCode` |
 | `loom-runtime` | Error aggregation, result metadata, dynamic layers |
 | `loom-pipe` | Time, sequence, branch, logical, retry, result/option operators |
-| `loom-config` | Config integration, validation with garde |
+| `loom-config` | Multi-file config merge ($include), config integration, validation |
 | `loom-cli` | Output behavior, structure simplification |
 | `loom-assert` | — |
 | `loom-codec` | — |
@@ -193,6 +188,7 @@ Each crate maintains its own `CHANGELOG.md`:
 
 Phases removed from stack after completion (also recorded in crate changelogs):
 
+- **Multi-File Config Merge** - $include directive for config composition
 - **Time Operators** - Timeout, delay
 - **Sequence Operators** - Flatten, flat_map, chunk, window, concat
 - **Control Flow & Result Ops** - Branch, and/or, retry, unwrap/expect operators
