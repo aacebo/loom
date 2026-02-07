@@ -89,6 +89,7 @@ impl ScoreLayer {
 
         // Build a lookup map for predictions by label name
         let mut prediction_map: HashMap<&str, f32> = HashMap::new();
+        
         for sentence_predictions in &predictions {
             for pred in sentence_predictions {
                 prediction_map.insert(
@@ -314,6 +315,19 @@ impl BatchScorer for ScoreLayer {
     }
 }
 
+impl super::Evaluable for ScoreLayer {
+    type Output = ScoreLayerOutput;
+
+    fn eval_batch(&self, samples: &[&Sample]) -> loom_error::Result<Vec<Self::Output>> {
+        let texts: Vec<&str> = samples.iter().map(|s| s.text.as_str()).collect();
+        self.score_batch(&texts)
+    }
+
+    fn to_result(&self, sample: &Sample, output: Self::Output) -> SampleResult {
+        Self::eval_output(sample, output, None)
+    }
+}
+
 // =============================================================================
 // Dataset Evaluation Methods
 // =============================================================================
@@ -371,7 +385,7 @@ impl ScoreLayer {
                     for ((_idx, sample), output) in
                         batch_samples.into_iter().zip(outputs.into_iter())
                     {
-                        let sample_result = Self::evaluate_output(&sample, output, None);
+                        let sample_result = Self::eval_output(&sample, output, None);
 
                         processed += 1;
                         on_progress(Progress {
@@ -469,7 +483,7 @@ impl ScoreLayer {
                     {
                         let raw_scores: HashMap<String, f32> =
                             output.labels().into_iter().collect();
-                        let sample_result = Self::evaluate_output(&sample, output, None);
+                        let sample_result = Self::eval_output(&sample, output, None);
 
                         processed += 1;
                         on_progress(Progress {
@@ -616,7 +630,7 @@ impl ScoreLayer {
     // === Private helper methods ===
 
     /// Evaluate a batch output for a sample.
-    fn evaluate_output<O: ScorerOutput>(
+    fn eval_output<O: ScorerOutput>(
         sample: &Sample,
         output: O,
         elapsed_ms: Option<i64>,

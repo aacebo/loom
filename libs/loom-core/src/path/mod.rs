@@ -17,54 +17,44 @@ pub use uri::*;
 ///
 /// # Examples
 ///
-/// ```
-/// use loom_runtime::path;
+/// ```ignore
+/// use loom_core::path;
 ///
-/// let file = path!(file "/home/user/file.txt");
-/// let uri = path!(uri "https://example.com/path");
-/// let field = path!(field "data.items[0].name");
+/// let file = path!(file => "/home/user/file.txt");
+/// let uri = path!(uri => "https://example.com/path");
+/// let field = path!(ident => "data.items[0].name");
 /// ```
 #[macro_export]
 macro_rules! path {
     (file => $path:expr) => {
-        $crate::file_path!(&$path)
+        $crate::path::Path::from($crate::file_path!($path))
     };
     (uri => $path:expr) => {
-        $crate::uri_path!(
-            &$crate::path::UriPath::parse($path)
-                .expect("invalid URI")
-                .to_string()
-        )
+        $crate::path::Path::from($crate::uri_path!($path))
     };
     (ident => $path:expr) => {
-        $crate::ident_path!(
-            &$crate::path::IdentPath::parse($path)
-                .expect("invalid field path")
-                .to_string()
-        )
+        $crate::path::Path::from($crate::ident_path!($path))
     };
 }
 
 #[macro_export]
 macro_rules! file_path {
     ($path:expr) => {
-        $crate::path::Path::File($crate::path::FilePath::parse($path))
+        $crate::path::FilePath::parse($path)
     };
 }
 
 #[macro_export]
 macro_rules! uri_path {
     ($path:expr) => {
-        $crate::path::Path::Uri($crate::path::UriPath::parse($path).expect("invalid URI"))
+        $crate::path::UriPath::parse($path).expect("invalid URI")
     };
 }
 
 #[macro_export]
 macro_rules! ident_path {
     ($path:expr) => {
-        $crate::path::Path::Ident(
-            $crate::path::IdentPath::parse($path).expect("invalid ident path"),
-        )
+        $crate::path::IdentPath::parse($path).expect("invalid ident path")
     };
 }
 

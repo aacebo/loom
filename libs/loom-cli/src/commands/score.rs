@@ -3,8 +3,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use clap::Args;
-use loom::core::Format;
-use loom::core::path::IdentPath;
+use loom::core::{Format, ident_path};
 use loom::io::path::{FilePath, Path};
 use loom::runtime::eval::score::ScoreLayer;
 use loom::runtime::{LoomConfig, ScoreConfig, eval};
@@ -88,7 +87,7 @@ impl ScoreCommand {
         let _ = concurrency; // Reserved for future multi-model parallelism
 
         // Get score config from layers dynamically
-        let score_path = IdentPath::parse("layers.score").expect("valid path");
+        let score_path = ident_path!("layers.score");
         let score_section = config.get_section(&score_path);
         let score_config: ScoreConfig = match score_section.bind() {
             Ok(c) => c,

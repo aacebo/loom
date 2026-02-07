@@ -68,6 +68,28 @@ impl Runtime {
         PipelineBuilder::new()
     }
 
+    /// Create an evaluation builder for dataset processing.
+    ///
+    /// This method provides a fluent API for running evaluations against datasets
+    /// using layers that implement the `Evaluable` trait.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let scorer = Arc::new(Mutex::new(score_config.build()?));
+    /// let result = runtime
+    ///     .eval(scorer)
+    ///     .batch_size(16)
+    ///     .on_progress(|p| println!("{}/{}", p.current, p.total))
+    ///     .run(&dataset)
+    ///     .await;
+    /// ```
+    pub fn eval<E: eval::Evaluable + 'static>(
+        &self,
+        evaluable: std::sync::Arc<std::sync::Mutex<E>>,
+    ) -> eval::EvalBuilder<'_, E> {
+        eval::EvalBuilder::new(self, evaluable)
+    }
+
     /// Load and deserialize data from a DataSource.
     ///
     /// # Arguments

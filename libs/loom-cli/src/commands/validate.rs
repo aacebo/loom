@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::Args;
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, ResetColor, SetForegroundColor};
-use loom::core::path::IdentPath;
+use loom::core::ident_path;
 use loom::io::path::{FilePath, Path};
 use loom::runtime::{ScoreConfig, eval};
 
@@ -60,7 +60,7 @@ impl ValidateCommand {
             };
 
             // Get score config from layers dynamically
-            let score_path = IdentPath::parse("layers.score").expect("valid path");
+            let score_path = ident_path!("layers.score");
             let score_section = config.get_section(&score_path);
             let score_config: ScoreConfig = match score_section.bind() {
                 Ok(c) => c,

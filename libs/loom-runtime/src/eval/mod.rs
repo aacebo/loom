@@ -27,27 +27,22 @@
 //! ```
 
 // Operational types - owned by runtime
+mod builder;
 mod dataset;
 mod difficulty;
 mod progress;
 pub mod result;
+mod evaluable;
 mod sample;
 pub mod score;
 mod validation;
 
 // Public exports - operational types
+pub use builder::*;
 pub use dataset::*;
 pub use difficulty::*;
 pub use progress::*;
 pub use result::*;
+pub use evaluable::*;
 pub use sample::*;
 pub use validation::*;
-
-// Re-export ML types from cortex for convenience
-pub use loom_cortex::bench::{AsyncScorer, BatchScorer, Decision, Scorer, ScorerOutput};
-
-// Re-export Platt calibration types and functions from cortex
-pub use loom_cortex::bench::platt::{
-    PlattParams, PlattTrainingResult, RawScoreExport, SampleScores, generate_rust_code,
-    train_platt_params,
-};
