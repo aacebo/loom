@@ -62,3 +62,7 @@ let codec = JsonCodec::new();
 let document = codec.decode(record)?;
 let record = codec.encode(document)?;
 ```
+
+## Navigation
+
+[← Back to Libraries](../README.md)

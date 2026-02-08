@@ -137,3 +137,7 @@ Run with cargo:
 cargo run --package loom-cli -- run datasets/samples.json -c configs/score.yaml
 cargo run --package loom-cli -- validate datasets/samples.json
 ```
+
+## Navigation
+
+[← Back to Libraries](../README.md)

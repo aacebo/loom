@@ -42,3 +42,7 @@ use loom::core::{Value, Format, MediaType};
 use loom::codec::{Codec, JsonCodec};
 use loom::config::ConfigBuilder;
 ```
+
+## Navigation
+
+[← Back to Libraries](../README.md)

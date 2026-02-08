@@ -194,3 +194,7 @@ loom-cortex/
 ## License
 
 See the repository root for license information.
+
+## Navigation
+
+[← Back to Libraries](../README.md)

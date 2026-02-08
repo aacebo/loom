@@ -56,3 +56,7 @@ let source = MemorySource::new();
 let record = Record::from_str(path, MediaType::TextJson, r#"{"key": "value"}"#);
 source.create(record).await?;
 ```
+
+## Navigation
+
+[← Back to Libraries](../README.md)

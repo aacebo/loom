@@ -47,3 +47,7 @@ let config = Config::new()
 let host: Option<&str> = get!(config, "database.host");
 let port: Option<i64> = get!(config, "database.port", int);
 ```
+
+## Navigation
+
+[← Back to Libraries](../README.md)
