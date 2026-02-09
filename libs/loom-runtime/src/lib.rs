@@ -6,8 +6,7 @@ pub use context::*;
 
 use std::sync::Arc;
 
-use loom_codec::{CodecRegistry, CodecRegistryBuilder};
-use loom_config::Config;
+use loom_codec::CodecRegistryBuilder;
 use loom_core::{Format, MediaType, decode, encode, value::Value};
 use loom_error::Result;
 use loom_io::{DataSourceRegistry, DataSourceRegistryBuilder, path::Path};
@@ -35,9 +34,7 @@ pub use loom_signal::{
 };
 
 pub struct Runtime {
-    codecs: CodecRegistry,
     sources: Arc<DataSourceRegistry>,
-    rconfig: Config,
     pipeline: Pipeline<RunContext>,
     signals: Arc<dyn Emitter + Send + Sync>,
 }
@@ -47,39 +44,18 @@ impl Runtime {
         Builder::new()
     }
 
-    pub fn codecs(&self) -> &CodecRegistry {
-        &self.codecs
-    }
-
-    pub fn sources(&self) -> &DataSourceRegistry {
-        &self.sources
-    }
-
-    /// Get the LoomConfig (runtime settings like batch_size, strict, etc.)
-    pub fn config(&self) -> LoomConfig {
-        self.rconfig.root_section().bind().unwrap_or_default()
-    }
-
-    /// Get the raw Config object for section access.
-    pub fn rconfig(&self) -> &Config {
-        &self.rconfig
-    }
-
-    /// Get a reference to the signal emitter.
-    pub fn emitter(&self) -> &dyn Emitter {
-        self.signals.as_ref()
-    }
-
     /// Execute the pipeline on a given input value.
     ///
     /// Creates a `RunContext` with the runtime's emitter and data sources,
     /// then threads the value through each layer.
     pub fn execute(&self, input: impl Into<Value>) -> Result<Value> {
         let mut ctx = RunContext::new(input, self.signals.clone(), self.sources.clone());
+
         for layer in self.pipeline.layers() {
             let output = layer.process(&ctx)?;
             ctx = ctx.next(output);
         }
+
         Ok(ctx.input().clone())
     }
 
@@ -159,7 +135,6 @@ impl Runtime {
 pub struct Builder {
     codecs: CodecRegistryBuilder,
     sources: DataSourceRegistryBuilder,
-    rconfig: Config,
     signals: SignalBroadcaster,
     layers: Vec<Box<dyn Layer<Input = RunContext>>>,
 }
@@ -169,7 +144,6 @@ impl Default for Builder {
         Self {
             codecs: CodecRegistryBuilder::default(),
             sources: DataSourceRegistryBuilder::default(),
-            rconfig: Config::new().build().unwrap(),
             signals: SignalBroadcaster::default(),
             layers: Vec::new(),
         }
@@ -188,12 +162,6 @@ impl Builder {
 
     pub fn source<T: loom_io::DataSource + 'static>(mut self, source: T) -> Self {
         self.sources = self.sources.source(source);
-        self
-    }
-
-    /// Set the configuration for the runtime.
-    pub fn config(mut self, config: Config) -> Self {
-        self.rconfig = config;
         self
     }
 
@@ -220,9 +188,7 @@ impl Builder {
         let sources = Arc::new(self.sources.build());
 
         Runtime {
-            codecs: self.codecs.build(),
             sources,
-            rconfig: self.rconfig,
             pipeline,
             signals,
         }

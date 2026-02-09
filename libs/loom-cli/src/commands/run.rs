@@ -4,7 +4,9 @@ use clap::Args;
 use loom::core::{Format, ident_path};
 use loom::eval::{EvalConfig, EvalLayer, EvalOutput, EvalResult, SampleDataset};
 use loom::io::path::{FilePath, Path};
-use loom::runtime::{Emitter, FileSystemSource, JsonCodec, Runtime, Signal, TomlCodec, YamlCodec};
+use loom::runtime::{
+    Emitter, FileSystemSource, JsonCodec, LoomConfig, Runtime, Signal, TomlCodec, YamlCodec,
+};
 
 use super::{load_config, resolve_output_path};
 use crate::widgets::{self, Widget};
@@ -58,6 +60,7 @@ impl RunCommand {
         };
 
         // Read eval config for threshold calculation (before config is moved)
+        let loom_config: LoomConfig = config.root_section().bind().unwrap_or_default();
         let eval_config: Option<EvalConfig> = {
             let eval_path = ident_path!("layers.eval");
             let section = config.get_section(&eval_path);
@@ -67,11 +70,8 @@ impl RunCommand {
         println!("Building runtime (this may download model files on first run)...");
 
         // Build eval layer in spawn_blocking (rust-bert model download conflicts with tokio)
-        let config_for_layer = config.clone();
         let eval_layer =
-            match tokio::task::spawn_blocking(move || EvalLayer::from_config(&config_for_layer))
-                .await
-            {
+            match tokio::task::spawn_blocking(move || EvalLayer::from_config(&config)).await {
                 Ok(Ok(layer)) => layer,
                 Ok(Err(e)) => {
                     eprintln!("Error building eval layer: {}", e);
@@ -89,19 +89,17 @@ impl RunCommand {
             .codec(JsonCodec::new())
             .codec(YamlCodec::new())
             .codec(TomlCodec::new())
-            .config(config)
             .layer(eval_layer)
             .emitter(ProgressEmitter)
             .build();
 
-        let loom_config = runtime.config();
         let output_dir = self.output.as_ref().or(loom_config.output.as_ref());
         let output_path =
             resolve_output_path(&self.path, output_dir.map(|p| p.as_path()), "results.json");
 
         println!("Loading dataset...");
 
-        let file_path = Path::File(FilePath::from(self.path.clone()));
+        let file_path = FilePath::from(self.path.clone()).into();
         let dataset: SampleDataset = match runtime.load("file_system", &file_path).await {
             Ok(d) => d,
             Err(e) => {
@@ -112,10 +110,10 @@ impl RunCommand {
 
         let eval_start = std::time::Instant::now();
         let total = dataset.samples.len();
+        let mut result = EvalResult::new();
 
         println!("Running evaluation on {} samples...\n", total);
 
-        let mut result = EvalResult::new();
         for sample in &dataset.samples {
             let output_value = match runtime.execute(sample.text.clone()) {
                 Ok(v) => v,

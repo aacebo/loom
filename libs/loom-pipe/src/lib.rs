@@ -3,10 +3,10 @@ pub mod pipeline;
 mod source;
 mod transformer;
 
+pub use operators::*;
 pub use pipeline::*;
 pub use source::*;
 pub use transformer::*;
-pub use operators::*;
 
 pub trait Operator<Input> {
     type Output;
