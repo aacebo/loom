@@ -10,11 +10,12 @@ use crate::eval::Sample;
 
 /// Single-item context bound to runtime (internal).
 pub struct Context<Input> {
-    runtime: Option<Arc<Runtime>>,
     pub meta: Map,
     pub step: usize,
     pub text: String,
     pub input: Input,
+
+    runtime: Option<Arc<Runtime>>,
 }
 
 impl<Input> Context<Input> {
@@ -22,11 +23,11 @@ impl<Input> Context<Input> {
     /// Used for standalone layer processing.
     pub fn new(text: &str, input: Input) -> Self {
         Self {
-            runtime: None,
             meta: Map::default(),
             step: 0,
             text: text.to_string(),
             input,
+            runtime: None,
         }
     }
 

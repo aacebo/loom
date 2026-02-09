@@ -29,8 +29,10 @@ use serde::{Serialize, de::DeserializeOwned};
 // Re-export commonly used types for convenience
 #[cfg(feature = "toml")]
 pub use loom_codec::TomlCodec;
+
 #[cfg(feature = "yaml")]
 pub use loom_codec::YamlCodec;
+
 pub use loom_codec::{JsonCodec, TextCodec};
 pub use loom_io::Record;
 pub use loom_io::sources::FileSystemSource;
