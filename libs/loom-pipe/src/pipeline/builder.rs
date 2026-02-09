@@ -1,44 +1,29 @@
-use super::{Layer, LayerNode, Pipeline, PipelineStage};
+use super::{Layer, LayerContext, Pipeline};
 
-/// Builder for constructing type-safe pipelines
-pub struct PipelineBuilder<Input, Output> {
-    stages: Vec<PipelineStage>,
-    _marker: std::marker::PhantomData<fn(Input) -> Output>,
+/// Builder for constructing pipelines.
+pub struct PipelineBuilder<C: LayerContext> {
+    layers: Vec<Box<dyn Layer<Input = C>>>,
 }
 
-impl<Input: Send + 'static> PipelineBuilder<Input, Input> {
+impl<C: LayerContext> PipelineBuilder<C> {
     pub fn new() -> Self {
-        Self {
-            stages: Vec::new(),
-            _marker: std::marker::PhantomData,
-        }
+        Self { layers: Vec::new() }
+    }
+
+    /// Add a layer to the pipeline.
+    pub fn then<L: Layer<Input = C> + 'static>(mut self, layer: L) -> Self {
+        self.layers.push(Box::new(layer));
+        self
+    }
+
+    /// Build the final pipeline.
+    pub fn build(self) -> Pipeline<C> {
+        Pipeline::new(self.layers)
     }
 }
 
-impl<Input: Send + 'static> Default for PipelineBuilder<Input, Input> {
+impl<C: LayerContext> Default for PipelineBuilder<C> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<Input: Send + 'static, Current: Send + 'static> PipelineBuilder<Input, Current> {
-    /// Add a layer to the pipeline, transforming Current -> L::Output
-    pub fn then<L>(self, layer: L) -> PipelineBuilder<Input, L::Output>
-    where
-        L: Layer + Sync + 'static,
-        L::Input: From<Current>,
-    {
-        let mut stages = self.stages;
-        stages.push(PipelineStage::Layer(Box::new(LayerNode::new(layer))));
-
-        PipelineBuilder {
-            stages,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
-    /// Build the final pipeline
-    pub fn build(self) -> Pipeline<Input, Current> {
-        Pipeline::new(self.stages)
     }
 }

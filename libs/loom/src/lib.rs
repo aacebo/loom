@@ -10,6 +10,9 @@ pub use loom_cortex as cortex;
 #[cfg(feature = "config")]
 pub use loom_config as config;
 
+#[cfg(feature = "eval")]
+pub use loom_eval as eval;
+
 #[cfg(feature = "io")]
 pub use loom_io as io;
 

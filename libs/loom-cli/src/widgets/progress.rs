@@ -58,7 +58,7 @@ impl Widget for ProgressBar {
         } else {
             0.0
         };
-        
+
         let filled = (pct * self.bar_width as f32) as usize;
         let empty = self.bar_width.saturating_sub(filled);
         let status = self

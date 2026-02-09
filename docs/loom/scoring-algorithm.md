@@ -1,4 +1,4 @@
-# 6.1.1 Scoring Algorithm
+# 6.1.1 Eval Algorithm
 
 <pre>
 ├── <a href="../README.md">..</a>
@@ -9,8 +9,7 @@
 ├── <a href="../5.classification.md">▸ 5. Classification</a>
 └── <a href="../README.md">▾ 6. Research/</a>
     ├── <a href="./README.md">▾ 6.1 Loom/</a>
-    │   ├── <span><a href="./scoring-algorithm.md"><b>6.1.1 Scoring Algorithm</b></a> 👈</span>
-    │   └── <a href="./roadmap/README.md">▸ 6.1.2 Roadmap/</a>
+    │   └── <span><a href="./scoring-algorithm.md"><b>6.1.1 Eval Algorithm</b></a> 👈</span>
     ├── <a href="../reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="../analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>
@@ -75,7 +74,7 @@ flowchart TD
     E --> OutcomeLabels
     F --> ContextLabels
 
-    SentimentLabels --> G[Score Aggregation<br/>S = max of category scores]
+    SentimentLabels --> G[Eval Aggregation<br/>S = max of category scores]
     EmotionLabels --> G
     OutcomeLabels --> G
     ContextLabels --> G
@@ -131,7 +130,7 @@ The final score is the maximum across all categories:
 
 ```mermaid
 flowchart LR
-    A[S_sentiment] --> E[S_overall = max]
+    A[S_sentiment] --> E[S_eval = max]
     B[S_emotion] --> E
     C[S_outcome] --> E
     D[S_context] --> E
@@ -189,7 +188,7 @@ flowchart LR
 
 Text is rejected (returns Cancel status) if **either** condition is met:
 
-1. **Low Score:** `S_overall < 0.75`
+1. **Low Score:** `S_eval < 0.75`
 2. **Phatic Detection:** `S_phatic >= 0.80`
 
 The phatic filter ensures greetings and small talk ("hi", "thanks", "bye") are filtered out regardless of other detected signals.

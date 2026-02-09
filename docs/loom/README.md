@@ -11,8 +11,7 @@ Documentation for the Loom scoring engine—a write-time memory gating system us
 ├── <a href="../5.classification.md">▸ 5. Classification</a>
 └── <a href="../README.md">▾ 6. Research/</a>
     ├── <span><a href="./README.md"><b>▾ 6.1 Loom/</b></a> 👈</span>
-    │   ├── <a href="./scoring-algorithm.md">6.1.1 Scoring Algorithm</a>
-    │   └── <a href="./roadmap/README.md">▸ 6.1.2 Roadmap/</a>
+    │   └── <a href="./scoring-algorithm.md">6.1.1 Eval Algorithm</a>
     ├── <a href="../reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="../analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>
@@ -46,8 +45,7 @@ Loom focuses on one thing well—scoring. Other concerns are handled downstream:
 
 | Document | Description |
 |----------|-------------|
-| [Scoring Algorithm](./scoring-algorithm.md) | How Loom scores text for memory worthiness |
-| [Improvement Roadmap](./roadmap/) | Phased improvement plan (LOOM-001 through LOOM-014) |
+| [Eval Algorithm](./scoring-algorithm.md) | How Loom scores text for memory worthiness |
 
 ---
 

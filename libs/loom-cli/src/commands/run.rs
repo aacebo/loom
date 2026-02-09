@@ -1,12 +1,10 @@
-use std::collections::HashSet;
 use std::path::PathBuf;
 
 use clap::Args;
 use loom::core::{Format, ident_path};
+use loom::eval::{EvalConfig, EvalLayer, EvalOutput, EvalResult, SampleDataset};
 use loom::io::path::{FilePath, Path};
-use loom::runtime::{
-    Emitter, FileSystemSource, JsonCodec, Runtime, ScoreConfig, Signal, TomlCodec, YamlCodec, eval,
-};
+use loom::runtime::{Emitter, FileSystemSource, JsonCodec, Runtime, Signal, TomlCodec, YamlCodec};
 
 use super::{load_config, resolve_output_path};
 use crate::widgets::{self, Widget};
@@ -16,25 +14,12 @@ struct ProgressEmitter;
 
 impl Emitter for ProgressEmitter {
     fn emit(&self, signal: Signal) {
-        if signal.name() == "eval.progress" {
+        if signal.name() == "eval.scored" {
             let attrs = signal.attributes();
-            let current = attrs.get("current").and_then(|v| v.as_int()).unwrap_or(0);
-            let total = attrs.get("total").and_then(|v| v.as_int()).unwrap_or(0);
-            let sample_id = attrs
-                .get("sample_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let correct = attrs
-                .get("correct")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            let status = if correct { '✓' } else { '✗' };
+            let score = attrs.get("score").and_then(|v| v.as_float()).unwrap_or(0.0);
 
             widgets::ProgressBar::new()
-                .total(total as usize)
-                .current(current as usize)
-                .message(sample_id)
-                .status(status)
+                .message(&format!("{:.2}", score))
                 .render()
                 .write();
         }
@@ -58,33 +43,13 @@ pub struct RunCommand {
     /// Show detailed per-category and per-label results
     #[arg(short, long)]
     pub verbose: bool,
-
-    /// Number of parallel inference workers (overrides config)
-    #[arg(long)]
-    pub concurrency: Option<usize>,
-
-    /// Batch size for ML inference (overrides config)
-    #[arg(long)]
-    pub batch_size: Option<usize>,
-
-    /// Fail if samples have categories/labels not in config (overrides config)
-    #[arg(long)]
-    pub strict: Option<bool>,
 }
 
 impl RunCommand {
     pub async fn exec(self) {
-        let path = &self.path;
-        let config_path = &self.config;
-        let output = self.output.as_ref();
-        let verbose = self.verbose;
-        let concurrency = self.concurrency;
-        let batch_size = self.batch_size;
-        let strict = self.strict;
+        println!("Loading config from {:?}...", self.config);
 
-        println!("Loading config from {:?}...", config_path);
-
-        let config = match load_config(config_path.to_str().unwrap_or_default()) {
+        let config = match load_config(self.config.to_str().unwrap_or_default()) {
             Ok(c) => c,
             Err(e) => {
                 eprintln!("Error loading config: {}", e);
@@ -92,61 +57,52 @@ impl RunCommand {
             }
         };
 
+        // Read eval config for threshold calculation (before config is moved)
+        let eval_config: Option<EvalConfig> = {
+            let eval_path = ident_path!("layers.eval");
+            let section = config.get_section(&eval_path);
+            section.bind().ok()
+        };
+
         println!("Building runtime (this may download model files on first run)...");
 
-        // Build runtime with config in blocking task (scorer building uses rust-bert which conflicts with tokio)
-        let runtime = match tokio::task::spawn_blocking(move || {
-            Runtime::new()
-                .source(FileSystemSource::builder().build())
-                .codec(JsonCodec::new())
-                .codec(YamlCodec::new())
-                .codec(TomlCodec::new())
-                .config(config)
-                .emitter(ProgressEmitter)
-                .build()
-        })
-        .await
-        {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Error building runtime: {}", e);
-                std::process::exit(1);
-            }
-        };
+        // Build eval layer in spawn_blocking (rust-bert model download conflicts with tokio)
+        let config_for_layer = config.clone();
+        let eval_layer =
+            match tokio::task::spawn_blocking(move || EvalLayer::from_config(&config_for_layer))
+                .await
+            {
+                Ok(Ok(layer)) => layer,
+                Ok(Err(e)) => {
+                    eprintln!("Error building eval layer: {}", e);
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    eprintln!("Error building eval layer: {}", e);
+                    std::process::exit(1);
+                }
+            };
 
-        // Get runtime settings
+        // Build runtime with externally-supplied layer
+        let runtime = Runtime::new()
+            .source(FileSystemSource::builder().build())
+            .codec(JsonCodec::new())
+            .codec(YamlCodec::new())
+            .codec(TomlCodec::new())
+            .config(config)
+            .layer(eval_layer)
+            .emitter(ProgressEmitter)
+            .build();
+
         let loom_config = runtime.config();
-
-        // Merge CLI args with config values (CLI overrides config)
-        let output_dir = output.or(loom_config.output.as_ref());
+        let output_dir = self.output.as_ref().or(loom_config.output.as_ref());
         let output_path =
-            resolve_output_path(path, output_dir.map(|p| p.as_path()), "results.json");
-        let batch_size = batch_size.unwrap_or(loom_config.batch_size);
-        let strict = strict.unwrap_or(loom_config.strict);
-        let _ = concurrency; // Reserved for future multi-model parallelism
+            resolve_output_path(&self.path, output_dir.map(|p| p.as_path()), "results.json");
 
-        // Get score config for validation
-        let score_path = ident_path!("layers.score");
-        let score_config: ScoreConfig = match runtime.rconfig().get_section(&score_path).bind() {
-            Ok(c) => c,
-            Err(e) => {
-                eprintln!("Error parsing score config: {}", e);
-                std::process::exit(1);
-            }
-        };
+        println!("Loading dataset...");
 
-        // Extract valid categories and labels from config
-        let valid_categories: Vec<String> = score_config.categories.keys().cloned().collect();
-        let valid_labels: Vec<String> = score_config
-            .categories
-            .values()
-            .flat_map(|c| c.labels.keys().cloned())
-            .collect();
-
-        println!("Loading dataset from {:?}...", path);
-
-        let file_path = Path::File(FilePath::from(path.clone()));
-        let mut dataset: eval::SampleDataset = match runtime.load("file_system", &file_path).await {
+        let file_path = Path::File(FilePath::from(self.path.clone()));
+        let dataset: SampleDataset = match runtime.load("file_system", &file_path).await {
             Ok(d) => d,
             Err(e) => {
                 eprintln!("Error loading dataset: {}", e);
@@ -154,60 +110,43 @@ impl RunCommand {
             }
         };
 
-        println!("Loaded {} samples", dataset.samples.len());
-
-        // Validate dataset against config
-        let errors = dataset.validate_with_config(Some(&valid_categories), Some(&valid_labels));
-
-        if !errors.is_empty() {
-            if strict {
-                eprintln!("Validation failed with {} error(s):", errors.len());
-                for error in &errors {
-                    eprintln!("  - {}", error);
-                }
-                std::process::exit(1);
-            } else {
-                // Filter out invalid samples
-                let valid_category_set: HashSet<&str> =
-                    valid_categories.iter().map(|s| s.as_str()).collect();
-                let valid_label_set: HashSet<&str> =
-                    valid_labels.iter().map(|s| s.as_str()).collect();
-
-                let original_count = dataset.samples.len();
-                dataset.samples.retain(|sample| {
-                    let category_valid =
-                        valid_category_set.contains(sample.primary_category.as_str());
-                    let labels_valid = sample
-                        .expected_labels
-                        .iter()
-                        .all(|l| valid_label_set.contains(l.as_str()));
-                    category_valid && labels_valid
-                });
-
-                let skipped = original_count - dataset.samples.len();
-                if skipped > 0 {
-                    eprintln!(
-                        "Warning: Skipping {} samples with unknown categories/labels",
-                        skipped
-                    );
-                }
-            }
-        }
-
-        if dataset.samples.is_empty() {
-            eprintln!("Error: No valid samples remaining after filtering");
-            std::process::exit(1);
-        }
-
+        let eval_start = std::time::Instant::now();
         let total = dataset.samples.len();
-        println!("\nRunning benchmark with batch size {}...\n", batch_size);
 
-        let result = match runtime.eval_scoring(&dataset, batch_size).await {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Error running evaluation: {}", e);
-                std::process::exit(1);
-            }
+        println!("Running evaluation on {} samples...\n", total);
+
+        let mut result = EvalResult::new();
+        for sample in &dataset.samples {
+            let output_value = match runtime.execute(sample.text.clone()) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("Error executing pipeline for sample {}: {}", sample.id, e);
+                    std::process::exit(1);
+                }
+            };
+
+            let output: EvalOutput = match output_value.try_into() {
+                Ok(o) => o,
+                Err(e) => {
+                    eprintln!("Error converting output for sample {}: {}", sample.id, e);
+                    std::process::exit(1);
+                }
+            };
+
+            let threshold = eval_config
+                .as_ref()
+                .map(|c| c.threshold_of(sample.text.len()))
+                .unwrap_or(0.75);
+
+            result = result.merge(output.to_result(sample, threshold));
+        }
+
+        let elapsed = eval_start.elapsed();
+        result.elapsed_ms = elapsed.as_millis() as i64;
+        result.throughput = if elapsed.as_secs_f32() > 0.0 {
+            total as f32 / elapsed.as_secs_f32()
+        } else {
+            0.0
         };
 
         // Clear the progress line
@@ -239,7 +178,7 @@ impl RunCommand {
         println!("Recall:    {:.3}", metrics.recall);
         println!("F1 Score:  {:.3}", metrics.f1);
 
-        if verbose {
+        if self.verbose {
             println!("\n=== Per-Category Results ===\n");
             let mut categories: Vec<_> = result.per_category.iter().collect();
             categories.sort_by_key(|(cat, _)| cat.as_str());

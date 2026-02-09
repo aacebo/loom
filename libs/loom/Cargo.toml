@@ -24,6 +24,7 @@ assert = ["dep:loom-assert"]
 core = ["dep:loom-core"]
 cortex = ["dep:loom-cortex"]
 config = ["dep:loom-config"]
+eval = ["dep:loom-eval"]
 io = ["dep:loom-io"]
 codec = ["dep:loom-codec"]
 pipe = ["dep:loom-pipe"]
@@ -34,7 +35,7 @@ runtime = ["dep:loom-runtime"]
 tokio = ["sync", "loom-sync?/tokio"]
 
 # Convenience feature to enable all crates
-full = ["assert", "core", "cortex", "config", "io", "codec", "pipe", "error", "sync", "signal", "runtime", "json", "yaml", "toml"]
+full = ["assert", "core", "cortex", "config", "eval", "io", "codec", "pipe", "error", "sync", "signal", "runtime", "json", "yaml", "toml"]
 
 [dependencies]
 loom-assert = { workspace = true, optional = true }
@@ -47,4 +48,5 @@ loom-pipe = { workspace = true, optional = true }
 loom-error = { workspace = true, optional = true }
 loom-sync = { workspace = true, optional = true }
 loom-signal = { workspace = true, optional = true }
+loom-eval = { workspace = true, optional = true }
 loom-runtime = { workspace = true, optional = true }

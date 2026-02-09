@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::eval::Decision;
+use crate::Decision;
 
 /// Result for a single sample.
 #[derive(Debug, Clone, Serialize, Deserialize)]

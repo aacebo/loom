@@ -2442,6 +2442,7 @@ dependencies = [
  "loom-core",
  "loom-cortex",
  "loom-error",
+ "loom-eval",
  "loom-io",
  "loom-pipe",
  "loom-runtime",
@@ -2523,6 +2524,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom-eval"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "loom-config",
+ "loom-core",
+ "loom-cortex",
+ "loom-error",
+ "loom-pipe",
+ "loom-runtime",
+ "loom-signal",
+ "serde",
+ "serde_json",
+ "serde_valid",
+]
+
+[[package]]
 name = "loom-io"
 version = "0.0.1"
 dependencies = [
@@ -2548,14 +2566,9 @@ dependencies = [
 name = "loom-runtime"
 version = "0.0.1"
 dependencies = [
- "async-trait",
- "blake3",
- "chrono",
- "futures",
  "loom-codec",
  "loom-config",
  "loom-core",
- "loom-cortex",
  "loom-error",
  "loom-io",
  "loom-pipe",

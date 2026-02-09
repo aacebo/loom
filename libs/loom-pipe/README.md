@@ -2,6 +2,63 @@
 
 Pipeline and operator traits for the Loom ecosystem.
 
+## Pipeline System
+
+The pipeline system provides a trait-based architecture for composing processing layers into sequential pipelines.
+
+### LayerContext (trait)
+
+Context passed between pipeline layers. Concrete implementations (e.g. `RunContext` in loom-runtime) add runtime-specific services.
+
+```rust
+pub trait LayerContext: Send + Sync {
+    /// The current input value for this layer.
+    fn input(&self) -> &Value;
+
+    /// Arbitrary metadata carried through the pipeline.
+    fn meta(&self) -> &Map;
+
+    /// Look up a named data source. Returns None by default.
+    fn data_source(&self, name: &str) -> Option<&dyn Any>;
+
+    /// Emit a named signal with attributes. No-op by default.
+    fn emit(&self, name: &str, attrs: &Map);
+}
+```
+
+### Layer (trait)
+
+A processing layer in a pipeline. Each layer specifies its context type via the `Input` associated type and returns a `Value` result from `process()`.
+
+```rust
+pub trait Layer: Send + Sync {
+    type Input: LayerContext;
+
+    fn process(&self, ctx: &Self::Input) -> Result<Value>;
+
+    fn name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+}
+```
+
+### Pipeline\<C\> and PipelineBuilder\<C\>
+
+`Pipeline<C>` holds a collection of layers sharing the same context type `C`. Execution and value threading are driven by the caller (e.g. the Runtime).
+
+```rust
+// Build a pipeline
+let pipeline = PipelineBuilder::<RunContext>::new()
+    .then(eval_layer)
+    .then(another_layer)
+    .build();
+
+// Access layers
+pipeline.layers();
+pipeline.len();
+pipeline.is_empty();
+```
+
 ## Key Traits
 
 ### Operator
