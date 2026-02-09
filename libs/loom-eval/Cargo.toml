@@ -1,0 +1,31 @@
+[package]
+name = "loom-eval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+documentation.workspace = true
+homepage.workspace = true
+repository.workspace = true
+
+[lib]
+doctest = false
+
+[features]
+default = ["json"]
+int = []
+json = ["loom-core/json"]
+
+[dependencies]
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_valid = { workspace = true }
+
+loom-core = { workspace = true }
+loom-config = { workspace = true }
+loom-cortex = { workspace = true }
+loom-error = { workspace = true }
+loom-pipe = { workspace = true }
+loom-runtime = { workspace = true }
+loom-signal = { workspace = true }

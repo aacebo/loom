@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
 use super::{
     CategoryMetrics, CategoryResult, EvalMetrics, LabelMetrics, LabelResult, SampleResult,
 };
+use crate::Sample;
 
 /// Raw benchmark results (counts only).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,72 @@ impl EvalResult {
             elapsed_ms: 0,
             throughput: 0.0,
         }
+    }
+
+    /// Accumulate a single sample's results into the running totals.
+    pub fn accumulate(&mut self, sample: &Sample, sample_result: &SampleResult) {
+        if sample_result.correct {
+            self.correct += 1;
+        }
+
+        let cat_result = self
+            .per_category
+            .entry(sample.primary_category.clone())
+            .or_default();
+        cat_result.total += 1;
+        if sample_result.correct {
+            cat_result.correct += 1;
+        }
+
+        let expected_set: HashSet<_> = sample.expected_labels.iter().collect();
+        let detected_set: HashSet<_> = sample_result.detected_labels.iter().collect();
+
+        for label in &sample.expected_labels {
+            let entry = self.per_label.entry(label.clone()).or_default();
+            entry.expected_count += 1;
+        }
+
+        for label in &sample_result.detected_labels {
+            let entry = self.per_label.entry(label.clone()).or_default();
+            entry.detected_count += 1;
+
+            if expected_set.contains(label) {
+                entry.true_positives += 1;
+            } else {
+                entry.false_positives += 1;
+            }
+        }
+
+        for label in &sample.expected_labels {
+            if !detected_set.contains(label) {
+                let entry = self.per_label.entry(label.clone()).or_default();
+                entry.false_negatives += 1;
+            }
+        }
+    }
+
+    /// Merge another EvalResult into this one.
+    pub fn merge(mut self, other: EvalResult) -> EvalResult {
+        self.total += other.total;
+        self.correct += other.correct;
+
+        for (cat, cr) in other.per_category {
+            let entry = self.per_category.entry(cat).or_default();
+            entry.total += cr.total;
+            entry.correct += cr.correct;
+        }
+
+        for (label, lr) in other.per_label {
+            let entry = self.per_label.entry(label).or_default();
+            entry.expected_count += lr.expected_count;
+            entry.detected_count += lr.detected_count;
+            entry.true_positives += lr.true_positives;
+            entry.false_positives += lr.false_positives;
+            entry.false_negatives += lr.false_negatives;
+        }
+
+        self.sample_results.extend(other.sample_results);
+        self
     }
 
     /// Compute metrics from the collected counts.

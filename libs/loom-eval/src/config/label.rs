@@ -1,28 +1,28 @@
 use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 
-/// Complete label definition
-/// Note: Label name is the key in the parent BTreeMap
+/// Complete label definition.
+/// Note: Label name is the key in the parent BTreeMap.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct ScoreLabelConfig {
+pub struct LabelConfig {
     /// Hypothesis text for zero-shot classification
     #[validate(min_length = 1)]
     pub hypothesis: String,
 
     /// Weight applied to score when calculating importance
-    #[serde(default = "ScoreLabelConfig::weight")]
+    #[serde(default = "LabelConfig::weight")]
     #[validate(minimum = 0.0)]
     #[validate(maximum = 1.0)]
     pub weight: f32,
 
     /// Minimum score threshold for this label to be considered
-    #[serde(default = "ScoreLabelConfig::threshold")]
+    #[serde(default = "LabelConfig::threshold")]
     #[validate(minimum = 0.0)]
     #[validate(maximum = 1.0)]
     pub threshold: f32,
 
     /// Platt scaling parameter A (default: 1.0 for identity)
-    #[serde(default = "ScoreLabelConfig::platt_a")]
+    #[serde(default = "LabelConfig::platt_a")]
     pub platt_a: f32,
 
     /// Platt scaling parameter B (default: 0.0 for identity)
@@ -30,7 +30,7 @@ pub struct ScoreLabelConfig {
     pub platt_b: f32,
 }
 
-impl ScoreLabelConfig {
+impl LabelConfig {
     fn weight() -> f32 {
         0.50
     }
@@ -44,7 +44,7 @@ impl ScoreLabelConfig {
     }
 }
 
-impl Default for ScoreLabelConfig {
+impl Default for LabelConfig {
     fn default() -> Self {
         Self {
             hypothesis: String::new(),

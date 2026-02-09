@@ -1,17 +1,17 @@
+use loom_core::value::Value;
 use loom_error::Result;
 
-use super::{LayerContext, LayerResult};
+use super::LayerContext;
 
 /// A processing layer in a pipeline.
-/// Layers transform input context into output wrapped in LayerResult.
-pub trait Layer: Send {
+///
+/// Each layer specifies its context type via the `Input` associated type
+/// and returns a `Value` result from `process()`.
+pub trait Layer: Send + Sync {
     type Input: LayerContext;
-    type Output: Send + 'static;
 
-    /// Process input and produce output.
-    fn process(&self, input: Self::Input) -> Result<LayerResult<Self::Output>>;
+    fn process(&self, ctx: &Self::Input) -> Result<Value>;
 
-    /// Optional: name for debugging/tracing
     fn name(&self) -> &'static str {
         std::any::type_name::<Self>()
     }

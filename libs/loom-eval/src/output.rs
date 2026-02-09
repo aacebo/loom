@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use loom_core::value::Value;
 use serde::{Deserialize, Serialize};
 
-use super::ScoreLabelConfig;
+use super::config::LabelConfig;
+use crate::result::{EvalResult, SampleResult};
+use crate::{Decision, Sample};
 
 /// Apply Platt scaling to calibrate raw model scores.
 /// P(y|x) = 1 / (1 + exp(-Ax - B))
@@ -18,24 +20,24 @@ fn calibrate(raw: f32, a: f32, b: f32) -> f32 {
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ScoreResult {
+pub struct EvalOutput {
     /// Overall score (max of category scores)
     pub score: f32,
     /// Categories keyed by name (mirrors config structure)
-    pub categories: BTreeMap<String, ScoreCategory>,
+    pub categories: BTreeMap<String, CategoryOutput>,
 }
 
-impl ScoreResult {
-    pub fn new(categories: BTreeMap<String, ScoreCategory>) -> Self {
+impl EvalOutput {
+    pub fn new(categories: BTreeMap<String, CategoryOutput>) -> Self {
         let score = categories.values().map(|c| c.score).fold(0.0f32, f32::max);
         Self { score, categories }
     }
 
-    pub fn category(&self, name: &str) -> Option<&ScoreCategory> {
+    pub fn category(&self, name: &str) -> Option<&CategoryOutput> {
         self.categories.get(name)
     }
 
-    pub fn label(&self, name: &str) -> Option<&ScoreLabel> {
+    pub fn label(&self, name: &str) -> Option<&LabelOutput> {
         self.categories
             .values()
             .flat_map(|c| c.labels.get(name))
@@ -46,7 +48,50 @@ impl ScoreResult {
         self.label(name).map(|l| l.score).unwrap_or_default()
     }
 
-    /// Returns (label_name, raw_score) pairs for external use
+    /// Returns labels whose calibrated score is above their threshold.
+    pub fn detected_labels(&self) -> Vec<String> {
+        self.categories
+            .values()
+            .flat_map(|c| c.labels.iter())
+            .filter(|(_, l)| l.score > 0.0)
+            .map(|(name, _)| name.clone())
+            .collect()
+    }
+
+    /// Decide Accept/Reject based on the given threshold.
+    pub fn decide(&self, threshold: f32) -> Decision {
+        if self.score >= threshold {
+            Decision::Accept
+        } else {
+            Decision::Reject
+        }
+    }
+
+    /// Convert this output into an EvalResult for a single sample.
+    pub fn to_result(self, sample: &Sample, threshold: f32) -> EvalResult {
+        let detected_labels = self.detected_labels();
+        let actual_decision = self.decide(threshold);
+        let correct = actual_decision == sample.expected_decision;
+
+        let sample_result = SampleResult {
+            id: sample.id.clone(),
+            expected_decision: sample.expected_decision,
+            actual_decision,
+            correct,
+            score: self.score,
+            expected_labels: sample.expected_labels.clone(),
+            detected_labels: detected_labels.clone(),
+            elapsed_ms: None,
+        };
+
+        let mut result = EvalResult::new();
+        result.total = 1;
+        result.accumulate(sample, &sample_result);
+        result.sample_results.push(sample_result);
+        result
+    }
+
+    /// Returns (label_name, raw_score) pairs for external use.
     pub fn raw_scores(&self) -> Vec<(String, f32)> {
         self.categories
             .iter()
@@ -60,23 +105,38 @@ impl ScoreResult {
 }
 
 #[cfg(feature = "json")]
-impl From<ScoreResult> for Value {
-    fn from(result: ScoreResult) -> Self {
-        let json = serde_json::to_value(&result).expect("ScoreResult is serializable");
+impl From<EvalOutput> for Value {
+    fn from(result: EvalOutput) -> Self {
+        let json = serde_json::to_value(&result).expect("EvalOutput is serializable");
         Value::from(json)
     }
 }
 
+#[cfg(feature = "json")]
+impl TryFrom<Value> for EvalOutput {
+    type Error = loom_error::Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        let json: serde_json::Value = (&value).into();
+        serde_json::from_value(json).map_err(|e| {
+            loom_error::Error::builder()
+                .code(loom_error::ErrorCode::BadArguments)
+                .message(&format!("Failed to deserialize EvalOutput: {}", e))
+                .build()
+        })
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ScoreCategory {
+pub struct CategoryOutput {
     /// Category score (avg of top-k labels)
     pub score: f32,
     /// Labels keyed by name (mirrors config structure)
-    pub labels: BTreeMap<String, ScoreLabel>,
+    pub labels: BTreeMap<String, LabelOutput>,
 }
 
-impl ScoreCategory {
-    pub fn new(labels: BTreeMap<String, ScoreLabel>) -> Self {
+impl CategoryOutput {
+    pub fn new(labels: BTreeMap<String, LabelOutput>) -> Self {
         let score = if labels.is_empty() {
             0.0
         } else {
@@ -85,7 +145,7 @@ impl ScoreCategory {
         Self { score, labels }
     }
 
-    pub fn topk(labels: BTreeMap<String, ScoreLabel>, k: usize) -> Self {
+    pub fn topk(labels: BTreeMap<String, LabelOutput>, k: usize) -> Self {
         let take = k.min(labels.len()).max(1);
 
         // Sort by score for top-k calculation
@@ -103,7 +163,7 @@ impl ScoreCategory {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ScoreLabel {
+pub struct LabelOutput {
     /// Calibrated score (raw * weight, if above threshold)
     pub score: f32,
     /// Raw model output before calibration
@@ -112,8 +172,8 @@ pub struct ScoreLabel {
     pub sentence: usize,
 }
 
-impl ScoreLabel {
-    pub fn new(raw_score: f32, sentence: usize, config: &ScoreLabelConfig) -> Self {
+impl LabelOutput {
+    pub fn new(raw_score: f32, sentence: usize, config: &LabelConfig) -> Self {
         let calibrated = calibrate(raw_score, config.platt_a, config.platt_b);
         let score = if calibrated >= config.threshold {
             calibrated * config.weight
@@ -164,8 +224,6 @@ mod tests {
 
     #[test]
     fn calibrate_sigmoid_midpoint() {
-        // When A*x + B = 0, sigmoid = 0.5
-        // With a=2.0, b=-1.0: at x=0.5, we get 2*0.5 - 1 = 0
         let result = calibrate(0.5, 2.0, -1.0);
         assert!(
             (result - 0.5).abs() < 0.001,
@@ -256,70 +314,68 @@ mod tests {
         );
     }
 
-    // === ScoreLabel Tests ===
+    // === LabelOutput Tests ===
 
     #[test]
-    fn score_label_applies_calibration() {
-        let config = ScoreLabelConfig {
+    fn label_output_applies_calibration() {
+        let config = LabelConfig {
             hypothesis: "test".to_string(),
             weight: 0.30,
             threshold: 0.70,
             platt_a: 1.0,
             platt_b: 0.0,
         };
-        let score_label = ScoreLabel::new(0.8, 0, &config);
-        // With identity calibration (a=1.0, b=0.0), raw score passes through
-        // Score = calibrated * weight = 0.8 * 0.30 = 0.24 (if above threshold 0.70)
+        let label_output = LabelOutput::new(0.8, 0, &config);
         let expected = 0.8 * config.weight;
         assert!(
-            (score_label.score - expected).abs() < 0.001,
+            (label_output.score - expected).abs() < 0.001,
             "Expected {}, got {}",
             expected,
-            score_label.score
+            label_output.score
         );
     }
 
     #[test]
-    fn score_label_below_threshold_zeroes_score() {
-        let config = ScoreLabelConfig {
+    fn label_output_below_threshold_zeroes_score() {
+        let config = LabelConfig {
             hypothesis: "test".to_string(),
             weight: 0.30,
             threshold: 0.70,
             platt_a: 1.0,
             platt_b: 0.0,
         };
-        let score_label = ScoreLabel::new(0.5, 0, &config);
+        let label_output = LabelOutput::new(0.5, 0, &config);
         assert!(
-            (score_label.score - 0.0).abs() < f32::EPSILON,
+            (label_output.score - 0.0).abs() < f32::EPSILON,
             "Score below threshold should be 0, got {}",
-            score_label.score
+            label_output.score
         );
     }
 
     #[test]
-    fn score_label_at_threshold_passes() {
-        let config = ScoreLabelConfig {
+    fn label_output_at_threshold_passes() {
+        let config = LabelConfig {
             hypothesis: "test".to_string(),
             weight: 1.00,
             threshold: 0.65,
             platt_a: 1.0,
             platt_b: 0.0,
         };
-        let score_label = ScoreLabel::new(0.65, 0, &config);
+        let label_output = LabelOutput::new(0.65, 0, &config);
         let expected = 0.65 * config.weight;
         assert!(
-            (score_label.score - expected).abs() < 0.001,
+            (label_output.score - expected).abs() < 0.001,
             "Score at threshold should pass: expected {}, got {}",
             expected,
-            score_label.score
+            label_output.score
         );
     }
 
-    // === ScoreCategory Tests ===
+    // === CategoryOutput Tests ===
 
     #[test]
-    fn score_category_topk() {
-        let config = ScoreLabelConfig {
+    fn category_output_topk() {
+        let config = LabelConfig {
             hypothesis: "test".to_string(),
             weight: 1.0,
             threshold: 0.0,
@@ -328,12 +384,11 @@ mod tests {
         };
 
         let mut labels = BTreeMap::new();
-        labels.insert("a".to_string(), ScoreLabel::new(0.9, 0, &config));
-        labels.insert("b".to_string(), ScoreLabel::new(0.7, 0, &config));
-        labels.insert("c".to_string(), ScoreLabel::new(0.5, 0, &config));
+        labels.insert("a".to_string(), LabelOutput::new(0.9, 0, &config));
+        labels.insert("b".to_string(), LabelOutput::new(0.7, 0, &config));
+        labels.insert("c".to_string(), LabelOutput::new(0.5, 0, &config));
 
-        let category = ScoreCategory::topk(labels, 2);
-        // Top 2 are 0.9 and 0.7, avg = 0.8
+        let category = CategoryOutput::topk(labels, 2);
         assert!(
             (category.score - 0.8).abs() < 0.001,
             "Expected 0.8, got {}",
@@ -341,27 +396,27 @@ mod tests {
         );
     }
 
-    // === ScoreResult Tests ===
+    // === EvalOutput Tests ===
 
     #[test]
-    fn score_result_category_lookup() {
+    fn eval_output_category_lookup() {
         let mut categories = BTreeMap::new();
         categories.insert(
             "sentiment".to_string(),
-            ScoreCategory {
+            CategoryOutput {
                 score: 0.5,
                 labels: BTreeMap::new(),
             },
         );
 
-        let result = ScoreResult::new(categories);
+        let result = EvalOutput::new(categories);
         assert!(result.category("sentiment").is_some());
         assert!(result.category("nonexistent").is_none());
     }
 
     #[test]
-    fn score_result_label_lookup() {
-        let config = ScoreLabelConfig {
+    fn eval_output_label_lookup() {
+        let config = LabelConfig {
             hypothesis: "test".to_string(),
             weight: 1.0,
             threshold: 0.0,
@@ -370,12 +425,12 @@ mod tests {
         };
 
         let mut labels = BTreeMap::new();
-        labels.insert("positive".to_string(), ScoreLabel::new(0.8, 0, &config));
+        labels.insert("positive".to_string(), LabelOutput::new(0.8, 0, &config));
 
         let mut categories = BTreeMap::new();
-        categories.insert("sentiment".to_string(), ScoreCategory::new(labels));
+        categories.insert("sentiment".to_string(), CategoryOutput::new(labels));
 
-        let result = ScoreResult::new(categories);
+        let result = EvalOutput::new(categories);
         assert!(result.label("positive").is_some());
         assert_eq!(result.label_score("positive"), 0.8);
         assert_eq!(result.label_score("nonexistent"), 0.0);

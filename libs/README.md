@@ -17,6 +17,7 @@ flowchart TB
 
         subgraph ML["ML Layer"]
             cortex["cortex"]
+            eval["eval"]
         end
 
         subgraph Processing["Processing Layer"]
@@ -43,12 +44,13 @@ flowchart TB
 
     %% Layer Dependencies
     cli --> loom
-    Orchestration --> ML
     Orchestration --> Processing
     Orchestration --> Format
     Orchestration --> Data
     Orchestration --> Foundation
+    ML --> Processing
     ML --> Data
+    ML --> Foundation
     Processing --> Foundation
     Format --> Data
     Format --> Foundation
@@ -58,6 +60,7 @@ flowchart TB
     click cli "https://github.com/aacebo/loom/blob/main/libs/loom-cli/README.md" _blank
     click runtime "https://github.com/aacebo/loom/blob/main/libs/loom-runtime/README.md" _blank
     click cortex "https://github.com/aacebo/loom/blob/main/libs/loom-cortex/README.md" _blank
+    click eval "https://github.com/aacebo/loom/blob/main/libs/loom-eval/README.md" _blank
     click pipe "https://github.com/aacebo/loom/blob/main/libs/loom-pipe/README.md" _blank
     click sync "https://github.com/aacebo/loom/blob/main/libs/loom-sync/README.md" _blank
     click codec "https://github.com/aacebo/loom/blob/main/libs/loom-codec/README.md" _blank
@@ -115,6 +118,7 @@ flowchart TB
 | Crate | Description |
 |-------|-------------|
 | [**loom-cortex**](./loom-cortex/README.md) | Machine learning and neural network capabilities (PyTorch, BERT) |
+| [**loom-eval**](./loom-eval/README.md) | Evaluation pipeline layer with scoring, result aggregation, and Platt calibration |
 
 ### Orchestration Layer
 

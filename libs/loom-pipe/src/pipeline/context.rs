@@ -1,34 +1,24 @@
-use loom_core::Map;
+use std::any::Any;
 
-/// Trait for layer input contexts
-pub trait LayerContext: Send + 'static {
-    /// Get the text being processed
-    fn text(&self) -> &str;
+use loom_core::{Map, value::Value};
 
-    /// Get the current step in the pipeline
-    fn step(&self) -> usize;
+/// Context passed between pipeline layers.
+///
+/// Provides access to the current input value, metadata, data sources,
+/// and signal emission. Concrete implementations (e.g. `RunContext` in
+/// loom-runtime) add runtime-specific services.
+pub trait LayerContext: Send + Sync {
+    /// The current input value for this layer.
+    fn input(&self) -> &Value;
 
-    /// Get metadata
+    /// Arbitrary metadata carried through the pipeline.
     fn meta(&self) -> &Map;
-}
 
-/// Result wrapper for layer outputs
-pub struct LayerResult<T> {
-    pub meta: Map,
-    pub output: T,
-}
-
-impl<T> LayerResult<T> {
-    pub fn new(output: T) -> Self {
-        Self {
-            meta: Map::default(),
-            output,
-        }
+    /// Look up a named data source. Returns `None` by default.
+    fn data_source(&self, _name: &str) -> Option<&dyn Any> {
+        None
     }
-}
 
-impl<T: std::fmt::Debug> std::fmt::Debug for LayerResult<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", &self.output)
-    }
+    /// Emit a named signal with attributes. No-op by default.
+    fn emit(&self, _name: &str, _attrs: &Map) {}
 }

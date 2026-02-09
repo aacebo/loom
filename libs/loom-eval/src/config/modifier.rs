@@ -1,33 +1,33 @@
 use serde::{Deserialize, Serialize};
 use serde_valid::Validate;
 
-/// Dynamic threshold configuration based on text length
+/// Dynamic threshold configuration based on text length.
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub struct ScoreModifierConfig {
+pub struct ModifierConfig {
     /// Delta subtracted from baseline for short text
-    #[serde(default = "ScoreModifierConfig::short_text_delta")]
+    #[serde(default = "ModifierConfig::short_text_delta")]
     #[validate(minimum = 0.0)]
     #[validate(maximum = 1.0)]
     pub short_text_delta: f32,
 
     /// Delta added to baseline for long text
-    #[serde(default = "ScoreModifierConfig::long_text_delta")]
+    #[serde(default = "ModifierConfig::long_text_delta")]
     #[validate(minimum = 0.0)]
     #[validate(maximum = 1.0)]
     pub long_text_delta: f32,
 
     /// Character limit for "short" text classification (must be >= 1)
-    #[serde(default = "ScoreModifierConfig::short_text_limit")]
+    #[serde(default = "ModifierConfig::short_text_limit")]
     #[validate(minimum = 1)]
     pub short_text_limit: usize,
 
     /// Character limit above which text is "long" (must be >= 1)
-    #[serde(default = "ScoreModifierConfig::long_text_limit")]
+    #[serde(default = "ModifierConfig::long_text_limit")]
     #[validate(minimum = 1)]
     pub long_text_limit: usize,
 }
 
-impl ScoreModifierConfig {
+impl ModifierConfig {
     fn short_text_delta() -> f32 {
         0.05
     }
@@ -45,7 +45,7 @@ impl ScoreModifierConfig {
     }
 }
 
-impl Default for ScoreModifierConfig {
+impl Default for ModifierConfig {
     fn default() -> Self {
         Self {
             short_text_delta: Self::short_text_delta(),

@@ -19,6 +19,7 @@ loom-assert = { path = "./libs/loom-assert", version = "0.0.1" }
 loom-codec = { path = "./libs/loom-codec", version = "0.0.1" }
 loom-cortex = { path = "./libs/loom-cortex", version = "0.0.1" }
 loom-config = { path = "./libs/loom-config", version = "0.0.1" }
+loom-eval = { path = "./libs/loom-eval", version = "0.0.1" }
 loom-io = { path = "./libs/loom-io", version = "0.0.1" }
 loom-core = { path = "./libs/loom-core", version = "0.0.1" }
 loom-pipe = { path = "./libs/loom-pipe", version = "0.0.1" }

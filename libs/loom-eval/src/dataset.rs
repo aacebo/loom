@@ -110,7 +110,7 @@ impl Default for SampleDataset {
 
 #[cfg(test)]
 mod tests {
-    use crate::eval::{Decision, Difficulty};
+    use crate::{Decision, Difficulty};
 
     use super::*;
 

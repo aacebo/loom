@@ -22,7 +22,7 @@ Research documentation for the LOOM system.
 ```mermaid
 flowchart LR
     A[Input Text] --> B[Guards]
-    B --> C[Score]
+    B --> C[Eval]
     C -->|below threshold| D[Drop]
     C -->|above threshold| E[Classify]
     E --> F[Store]
@@ -90,8 +90,7 @@ LOOM is a **write-time memory gating** system that decides whether text is worth
 
 ### Loom Engine
 
-- [Scoring Algorithm](./loom/scoring-algorithm.md) — How Loom scores text
-- [Improvement Roadmap](./loom/roadmap/) — Phased improvements (LOOM-001 through LOOM-014)
+- [Eval Algorithm](./loom/scoring-algorithm.md) — How Loom scores text
 
 ### Analysis
 
