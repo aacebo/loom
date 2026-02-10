@@ -10,7 +10,7 @@ use loom_codec::CodecRegistryBuilder;
 use loom_core::{Format, MediaType, decode, encode, value::Value};
 use loom_error::Result;
 use loom_io::{DataSourceRegistry, DataSourceRegistryBuilder, path::Path};
-use loom_pipe::{Layer, LayerContext, Pipeline};
+use loom_pipe::{Layer, Pipeline};
 use serde::{Serialize, de::DeserializeOwned};
 
 // Re-export config types

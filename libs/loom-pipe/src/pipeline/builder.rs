@@ -1,11 +1,11 @@
-use super::{Layer, LayerContext, Pipeline};
+use super::{Layer, Pipeline};
 
 /// Builder for constructing pipelines.
-pub struct PipelineBuilder<C: LayerContext> {
+pub struct PipelineBuilder<C> {
     layers: Vec<Box<dyn Layer<Input = C>>>,
 }
 
-impl<C: LayerContext> PipelineBuilder<C> {
+impl<C> PipelineBuilder<C> {
     pub fn new() -> Self {
         Self { layers: Vec::new() }
     }
@@ -22,7 +22,7 @@ impl<C: LayerContext> PipelineBuilder<C> {
     }
 }
 
-impl<C: LayerContext> Default for PipelineBuilder<C> {
+impl<C> Default for PipelineBuilder<C> {
     fn default() -> Self {
         Self::new()
     }

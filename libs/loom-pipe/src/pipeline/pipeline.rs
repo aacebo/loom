@@ -1,14 +1,14 @@
-use super::{Layer, LayerContext};
+use super::Layer;
 
 /// A collection of layers to be executed in sequence.
 ///
 /// Execution and value threading are driven by the caller
 /// (e.g. the Runtime), which creates a new context for each layer.
-pub struct Pipeline<C: LayerContext> {
+pub struct Pipeline<C> {
     layers: Vec<Box<dyn Layer<Input = C>>>,
 }
 
-impl<C: LayerContext> Pipeline<C> {
+impl<C> Pipeline<C> {
     pub fn new(layers: Vec<Box<dyn Layer<Input = C>>>) -> Self {
         Self { layers }
     }

@@ -5,7 +5,6 @@ use loom_config::Config;
 use loom_core::{Map, ident_path, value::Value};
 use loom_cortex::CortexModel;
 use loom_error::{Error, ErrorCode};
-use loom_pipe::LayerContext;
 use loom_runtime::RunContext;
 
 use crate::config::EvalConfig;

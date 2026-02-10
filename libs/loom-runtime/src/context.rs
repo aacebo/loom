@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use loom_core::{Map, value::Value};
 use loom_io::DataSourceRegistry;
-use loom_pipe::LayerContext;
 use loom_signal::{Emitter, Signal};
 
 /// Runtime execution context providing emitter and data source access to layers.
@@ -42,16 +41,16 @@ impl RunContext {
     }
 }
 
-impl LayerContext for RunContext {
-    fn input(&self) -> &Value {
+impl RunContext {
+    pub fn input(&self) -> &Value {
         &self.input
     }
 
-    fn meta(&self) -> &Map {
+    pub fn meta(&self) -> &Map {
         &self.meta
     }
 
-    fn emit(&self, name: &str, attrs: &Map) {
+    pub fn emit(&self, name: &str, attrs: &Map) {
         let mut builder = Signal::new().name(name);
         for (k, v) in attrs.iter() {
             builder = builder.attr(k.clone(), v.clone());
