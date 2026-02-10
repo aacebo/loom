@@ -162,7 +162,7 @@ Types for Platt scaling probability calibration:
 use loom_cortex::bench::platt::{PlattParams, PlattTrainingResult};
 ```
 
-> **Note:** Operational types (datasets, results, runners) are in `loom_runtime::eval`.
+> **Note:** Operational types (datasets, results, runners) are in `loom_eval`.
 
 ## Module Structure
 

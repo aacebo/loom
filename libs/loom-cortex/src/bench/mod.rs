@@ -4,7 +4,7 @@
 //! - `Decision` enum for accept/reject outcomes
 //! - `platt` submodule for Platt calibration training
 //!
-//! For operational types (datasets, results, runner), see `loom_runtime::eval`.
+//! For operational types (datasets, results, runner), see `loom_eval`.
 
 mod decision;
 pub mod platt;

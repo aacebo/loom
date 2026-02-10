@@ -10,6 +10,7 @@ Enable individual crates as needed:
 
 - `core` - Core types (Value, Path, Format, MediaType)
 - `cortex` - AI model types and abstractions
+- `eval` - Evaluation pipeline layer
 - `config` - Configuration management
 - `io` - Data source abstractions
 - `codec` - Encoding/decoding (JSON, YAML, TOML)
