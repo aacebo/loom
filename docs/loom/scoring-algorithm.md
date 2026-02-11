@@ -9,7 +9,8 @@
 ├── <a href="../5.classification.md">▸ 5. Classification</a>
 └── <a href="../README.md">▾ 6. Research/</a>
     ├── <a href="./README.md">▾ 6.1 Loom/</a>
-    │   └── <span><a href="./scoring-algorithm.md"><b>6.1.1 Eval Algorithm</b></a> 👈</span>
+    │   ├── <span><a href="./scoring-algorithm.md"><b>6.1.1 Eval Algorithm</b></a> 👈</span>
+    │   └── <a href="./hybrid-algorithm.md">6.1.2 Hybrid Algorithm</a>
     ├── <a href="../reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="../analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>

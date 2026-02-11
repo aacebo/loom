@@ -11,7 +11,8 @@ Documentation for the Loom scoring engine—a write-time memory gating system us
 ├── <a href="../5.classification.md">▸ 5. Classification</a>
 └── <a href="../README.md">▾ 6. Research/</a>
     ├── <span><a href="./README.md"><b>▾ 6.1 Loom/</b></a> 👈</span>
-    │   └── <a href="./scoring-algorithm.md">6.1.1 Eval Algorithm</a>
+    │   ├── <a href="./scoring-algorithm.md">6.1.1 Eval Algorithm</a>
+    │   └── <a href="./hybrid-algorithm.md">6.1.2 Hybrid Algorithm</a>
     ├── <a href="../reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="../analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>
@@ -46,6 +47,7 @@ Loom focuses on one thing well—scoring. Other concerns are handled downstream:
 | Document | Description |
 |----------|-------------|
 | [Eval Algorithm](./scoring-algorithm.md) | How Loom scores text for memory worthiness |
+| [Hybrid Algorithm](./hybrid-algorithm.md) | Local + LLM hybrid evaluation strategy |
 
 ---
 
