@@ -10,7 +10,35 @@
 └── <a href="../README.md">▾ 6. Research/</a>
     ├── <a href="./README.md">▾ 6.1 Loom/</a>
     │   ├── <a href="./scoring-algorithm.md">6.1.1 Eval Algorithm</a>
-    │   └── <span><a href="./hybrid-algorithm.md"><b>6.1.2 Hybrid Algorithm</b></a> 👈</span>
+    │   └── <span><a href="./hybrid-algorithm.md"><b>▾ 6.1.2 Hybrid Algorithm</b></a> 👈</span>
+    │       ├── <a href="#at-a-glance">At a Glance</a>
+    │       ├── <a href="#research-basis">▾ Research Basis</a>
+    │       │   ├── <a href="#representative-models">Representative Models</a>
+    │       │   ├── <a href="#key-accuracy-findings">Key Accuracy Findings</a>
+    │       │   └── <a href="#meta-evaluation-benchmarks">Meta-Evaluation Benchmarks</a>
+    │       ├── <a href="#what-hybrid-means">What "Hybrid" Means</a>
+    │       ├── <a href="#end-to-end-flow">End-to-End Flow</a>
+    │       ├── <a href="#the-gating-logic">The Gating Logic</a>
+    │       ├── <a href="#scoring--thresholds-pattern">Scoring + Thresholds Pattern</a>
+    │       ├── <a href="#reconciling-local-vs-llm-outputs">Reconciling Local vs LLM Outputs</a>
+    │       ├── <a href="#backpressure--cost-control-loop">Backpressure / Cost Control Loop</a>
+    │       ├── <a href="#known-biases-and-failure-modes">▾ Known Biases and Failure Modes</a>
+    │       │   ├── <a href="#llm-judge-biases">LLM Judge Biases</a>
+    │       │   └── <a href="#local-model-failure-modes">Local Model Failure Modes</a>
+    │       ├── <a href="#decision-criteria-by-use-case">Decision Criteria by Use Case</a>
+    │       ├── <a href="#engineering-considerations">▾ Engineering Considerations</a>
+    │       │   ├── <a href="#versioning-and-drift">Versioning and Drift</a>
+    │       │   ├── <a href="#prompt-engineering-for-judges">Prompt Engineering for Judges</a>
+    │       │   └── <a href="#privacy-data-residency-and-offline-capability">Privacy, Data Residency, and Offline</a>
+    │       ├── <a href="#performance-benchmarks">▾ Performance Benchmarks</a>
+    │       │   ├── <a href="#accuracy-llm-judge-vs-local-baseline">Accuracy</a>
+    │       │   ├── <a href="#throughput-evals-per-second">Throughput</a>
+    │       │   ├── <a href="#cost-per-10000-evaluations">Cost</a>
+    │       │   ├── <a href="#model-size">Model Size</a>
+    │       │   ├── <a href="#full-metrics-comparison">Full Metrics Comparison</a>
+    │       │   └── <a href="#api-pricing-reference">API Pricing Reference</a>
+    │       ├── <a href="#why-hybrid-is-usually-the-best-default">Why Hybrid Is Usually the Best Default</a>
+    │       └── <a href="#implementation-path">Implementation Path</a>
     ├── <a href="../reference/README.md">▸ 6.2 Reference/</a>
     └── <a href="../analysis/README.md">▸ 6.3 Analysis/</a>
 </pre>
@@ -23,16 +51,16 @@ A **hybrid evaluation strategy** that pairs a fast local classifier with selecti
 
 | Dimension | Local Model (NLI / STS / Classifier) | LLM Judge (API) |
 |-----------|--------------------------------------|-----------------|
-| **Latency per eval** | ~0.0006 s (cross-encoder) / ~0.00006 s (bi-encoder) | ~2.9 s |
-| **Throughput** | ~1,800 docs/s (cross-encoder) / ~18,000 q/s (bi-encoder) on V100 | ~0.34 eval/s |
-| **Cost per eval** | ~$0.0000005 | ~$0.0032 |
-| **Cost per 10k evals** | ~$0.005 | ~$32.00 |
-| **Accuracy vs humans** | BERTScore avg Spearman ρ ≈ 0.225 (SummEval) | G-EVAL (GPT-4) avg Spearman ρ ≈ 0.514 (SummEval) |
-| **Model size** | 22.7M params (MiniLM) | 70B params (Llama 3.1) / opaque (API) |
-| **Nuance** | Good on trained distribution | Excellent on edge cases |
-| **Explainability** | Calibrated numeric scores | Natural-language rationales |
-| **Reproducibility** | Deterministic | Nondeterministic (even at T=0) |
-| **Role** | Handles the bulk (~95%+ of traffic) | Handles the exceptions |
+| **Latency per eval** | 🟢 ~0.0006 s (cross-encoder) / ~0.00006 s (bi-encoder) | 🔴 ~2.9 s |
+| **Throughput** | 🟢 ~1,800 docs/s (cross-encoder) / ~18,000 q/s (bi-encoder) on V100 | 🔴 ~0.34 eval/s |
+| **Cost per eval** | 🟢 ~$0.0000005 | 🔴 ~$0.0032 |
+| **Cost per 10k evals** | 🟢 ~$0.005 | 🔴 ~$32.00 |
+| **Accuracy vs humans** | 🔴 BERTScore avg Spearman ρ ≈ 0.225 (SummEval) | 🟢 G-EVAL (GPT-4) avg Spearman ρ ≈ 0.514 (SummEval) |
+| **Model size** | 🟢 22.7M params (MiniLM) | 🔴 70B params (Llama 3.1) / opaque (API) |
+| **Nuance** | 🔴 Good on trained distribution | 🟢 Excellent on edge cases |
+| **Explainability** | 🟢 Calibrated numeric scores | 🟢 Natural-language rationales |
+| **Reproducibility** | 🟢 Deterministic | 🔴 Nondeterministic (even at T=0) |
+| **Role** | 🟢 Handles the bulk (~95%+ of traffic) | 🟢 Handles the exceptions |
 
 > **Bottom line:** Local models are **~5,200× faster** and **~6,800× cheaper** per eval, but LLM judges correlate **~128% better** with human judgments on open-ended criteria.
 
@@ -49,12 +77,12 @@ The hybrid approach is grounded in a core tradeoff between two evaluation famili
 
 ### Representative Models
 
-| Category | Models | Params | Throughput | Strengths | Weaknesses |
+| Category | Models | Params | Throughput | 🟢 Strengths | 🔴 Weaknesses |
 |----------|--------|--------|------------|-----------|------------|
-| **LLM Judge (API)** | GPT-4, Claude Opus | Opaque | Token-based; TTFT ~15 s at 128k ctx | Highest flexibility; rubric-based; reference-free; can explain | Prompt sensitivity; bias; nondeterminism; cost; drift |
-| **LLM Judge (hosted)** | Llama 2 (4k ctx), Llama 3 (8k), Llama 3.1 (128k) | 70B | vLLM: 2–4× throughput via PagedAttention | Data control; reproducibility; offline | High infra burden; GPU memory; still exhibits judge biases |
-| **Local STS (bi-encoder)** | SBERT, SimCSE, MiniLM embeddings | 22–110M | ~18,000 q/s (V100), ~750 q/s (CPU) | Extremely fast; cacheable; reproducible; offline | Needs references; similarity ≠ correctness; weak on style |
-| **Local NLI / cross-encoder** | DeBERTa, RoBERTa, MiniLM cross-encoder | 22–350M | ~1,800 docs/s (MiniLM-L6) | Strong for factual consistency / constraint checks | Granularity mismatch; adversarial brittleness; needs claim extraction |
+| **LLM Judge (API)** | GPT-4, Claude Opus | Opaque | Token-based; TTFT ~15 s at 128k ctx | 🟢 Highest flexibility; rubric-based; reference-free; can explain | 🔴 Prompt sensitivity; bias; nondeterminism; cost; drift |
+| **LLM Judge (hosted)** | Llama 2 (4k ctx), Llama 3 (8k), Llama 3.1 (128k) | 70B | vLLM: 2–4× throughput via PagedAttention | 🟢 Data control; reproducibility; offline | 🔴 High infra burden; GPU memory; still exhibits judge biases |
+| **Local STS (bi-encoder)** | SBERT, SimCSE, MiniLM embeddings | 22–110M | ~18,000 q/s (V100), ~750 q/s (CPU) | 🟢 Extremely fast; cacheable; reproducible; offline | 🔴 Needs references; similarity ≠ correctness; weak on style |
+| **Local NLI / cross-encoder** | DeBERTa, RoBERTa, MiniLM cross-encoder | 22–350M | ~1,800 docs/s (MiniLM-L6) | 🟢 Strong for factual consistency / constraint checks | 🔴 Granularity mismatch; adversarial brittleness; needs claim extraction |
 
 ### Key Accuracy Findings
 
@@ -260,22 +288,22 @@ flowchart LR
 
 ### LLM Judge Biases
 
-| Bias | Description | Mitigation |
+| Bias | 🔴 Description | 🟢 Mitigation |
 |------|-------------|------------|
-| **Position bias** | Favors the first or second option in pairwise comparisons | Randomize order; average both directions; track preference fairness |
-| **Length / verbosity bias** | Prefers longer, more verbose responses regardless of quality | Length-controlled scoring (LC-AlpacaEval improved Spearman 0.94 → 0.98); regression debiasing |
-| **Prompt sensitivity** | Small prompt changes cause large score shifts | Structured form-filling; explicit rubric criteria; chain-of-thought |
-| **Nondeterminism** | Outputs vary even at temperature = 0 (implementation-level factors) | Multi-run judging; track stability metrics; store raw responses |
-| **Model drift** | API providers silently update weights and safety layers | Pin model versions; run canary suites; store model version IDs |
+| **Position bias** | 🔴 Favors the first or second option in pairwise comparisons | 🟢 Randomize order; average both directions; track preference fairness |
+| **Length / verbosity bias** | 🔴 Prefers longer, more verbose responses regardless of quality | 🟢 Length-controlled scoring (LC-AlpacaEval improved Spearman 0.94 → 0.98); regression debiasing |
+| **Prompt sensitivity** | 🔴 Small prompt changes cause large score shifts | 🟢 Structured form-filling; explicit rubric criteria; chain-of-thought |
+| **Nondeterminism** | 🔴 Outputs vary even at temperature = 0 (implementation-level factors) | 🟢 Multi-run judging; track stability metrics; store raw responses |
+| **Model drift** | 🔴 API providers silently update weights and safety layers | 🟢 Pin model versions; run canary suites; store model version IDs |
 
 ### Local Model Failure Modes
 
-| Failure Mode | Description | Mitigation |
+| Failure Mode | 🔴 Description | 🟢 Mitigation |
 |--------------|-------------|------------|
-| **Semantic overlap ≠ correctness** | High similarity despite factual errors, negation flips, or missing constraints | Pair STS with NLI entailment checks; don't rely on similarity alone |
-| **Granularity mismatch** | Sentence-level NLI models applied to document-level input lose context | Segment + aggregate (SummaC pattern); use doc-aware models when available |
-| **Adversarial brittleness** | NLI models overfit dataset artifacts; break on adversarial inputs | Test on ANLI-style stress tests; don't treat raw entailment as ground truth |
-| **Domain shift** | Performance degrades on unseen domains or writing styles | Monitor per-domain accuracy; calibrate thresholds per domain; periodic retraining |
+| **Semantic overlap ≠ correctness** | 🔴 High similarity despite factual errors, negation flips, or missing constraints | 🟢 Pair STS with NLI entailment checks; don't rely on similarity alone |
+| **Granularity mismatch** | 🔴 Sentence-level NLI models applied to document-level input lose context | 🟢 Segment + aggregate (SummaC pattern); use doc-aware models when available |
+| **Adversarial brittleness** | 🔴 NLI models overfit dataset artifacts; break on adversarial inputs | 🟢 Test on ANLI-style stress tests; don't treat raw entailment as ground truth |
+| **Domain shift** | 🔴 Performance degrades on unseen domains or writing styles | 🟢 Monitor per-domain accuracy; calibrate thresholds per domain; periodic retraining |
 
 ---
 
@@ -389,16 +417,16 @@ xychart-beta
 
 | Metric | LLM Judge (GPT-4.1 API) | Local (MiniLM Cross-Encoder) | Difference |
 |--------|------------------------:|-----------------------------:|-----------:|
-| **Accuracy — Spearman ρ** (SummEval) | 0.514 | 0.225 (BERTScore) | **+128%** higher (LLM) |
-| **Accuracy — Kendall τ** (SummEval) | 0.418 | 0.175 (BERTScore) | **+139%** higher (LLM) |
-| **Latency per eval** | ~2.92 s | ~0.00056 s | **~5,200×** slower (LLM) |
-| **Throughput** (evals/sec) | ~0.34 | ~1,800 | **~5,300×** lower (LLM) |
-| **Cost per eval** | $0.0032 | $0.0000005 | **~6,800×** more expensive (LLM) |
-| **Cost per 10k evals** | ~$32.00 | ~$0.005 | **~6,800×** more expensive (LLM) |
-| **Model parameters** | 70B (Llama 3.1, if self-hosted) | 22.7M (MiniLM) | **~3,084×** larger (LLM) |
-| **Context capacity** | 128k tokens (Llama 3.1) | ~256 wordpieces (typical) | LLM handles long docs; local truncates |
-| **TTFT at 128k context** | ~15 s | N/A | Long-context judging is slow |
-| **ONNX optimization speedup** | N/A | ~1.83× (GPU) / ~3.08× (CPU) | Further throughput gains available |
+| **Accuracy — Spearman ρ** (SummEval) | 🟢 0.514 | 🔴 0.225 (BERTScore) | **+128%** higher (LLM) |
+| **Accuracy — Kendall τ** (SummEval) | 🟢 0.418 | 🔴 0.175 (BERTScore) | **+139%** higher (LLM) |
+| **Latency per eval** | 🔴 ~2.92 s | 🟢 ~0.00056 s | **~5,200×** slower (LLM) |
+| **Throughput** (evals/sec) | 🔴 ~0.34 | 🟢 ~1,800 | **~5,300×** lower (LLM) |
+| **Cost per eval** | 🔴 $0.0032 | 🟢 $0.0000005 | **~6,800×** more expensive (LLM) |
+| **Cost per 10k evals** | 🔴 ~$32.00 | 🟢 ~$0.005 | **~6,800×** more expensive (LLM) |
+| **Model parameters** | 🔴 70B (Llama 3.1, if self-hosted) | 🟢 22.7M (MiniLM) | **~3,084×** larger (LLM) |
+| **Context capacity** | 🟢 128k tokens (Llama 3.1) | 🔴 ~256 wordpieces (typical) | LLM handles long docs; local truncates |
+| **TTFT at 128k context** | 🔴 ~15 s | 🟢 N/A | Long-context judging is slow |
+| **ONNX optimization speedup** | 🔴 N/A | 🟢 ~1.83× (GPU) / ~3.08× (CPU) | Further throughput gains available |
 
 ### API Pricing Reference
 
